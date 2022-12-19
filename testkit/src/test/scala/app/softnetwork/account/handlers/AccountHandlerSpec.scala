@@ -2,10 +2,14 @@ package app.softnetwork.account.handlers
 
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.softnetwork.notification.model.Platform
-import app.softnetwork.account.config.Settings
+import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.message._
 import app.softnetwork.account.model._
 import app.softnetwork.account.scalatest.BasicAccountTestKit
+
+import app.softnetwork.persistence._
+
+import MockGenerator._
 
 /** Created by smanciot on 18/04/2020.
   */
@@ -13,8 +17,6 @@ class AccountHandlerSpec
     extends MockBasicAccountHandler
     with AnyWordSpecLike
     with BasicAccountTestKit {
-
-  import MockGenerator._
 
   private val anonymous = "anonymous"
 
@@ -39,8 +41,6 @@ class AccountHandlerSpec
   private val password = "Changeit1"
 
   private val newPassword = "Changeit2"
-
-  import app.softnetwork.persistence._
 
   private val usernameUuid: String = generateUUID(Some(username))
 
@@ -251,7 +251,7 @@ class AccountHandlerSpec
     }
     "disable account after n login failures" in {
       this ! (gsm, Login(gsm, password))
-      val failures = (0 to Settings.MaxLoginFailures) // max number of failures + 1
+      val failures = (0 to AccountSettings.MaxLoginFailures) // max number of failures + 1
         .map(_ => this ?? (gsm, Login(gsm, "fake")))
       failures.last await {
         case AccountDisabled => succeed

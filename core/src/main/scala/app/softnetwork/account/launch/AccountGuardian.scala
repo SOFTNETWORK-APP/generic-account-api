@@ -8,6 +8,7 @@ import app.softnetwork.account.persistence.query.AccountEventProcessorStreams.In
 import app.softnetwork.account.persistence.typed.AccountBehavior
 import app.softnetwork.persistence.launch.PersistentEntity
 import app.softnetwork.persistence.query.{EventProcessorStream, SchemaProvider}
+import app.softnetwork.persistence.launch.PersistenceGuardian._
 import app.softnetwork.session.launch.SessionGuardian
 
 trait AccountGuardian[
@@ -16,8 +17,6 @@ trait AccountGuardian[
   N <: Notification
 ] extends NotificationGuardian[N]
     with SessionGuardian { _: SchemaProvider =>
-
-  import app.softnetwork.persistence.launch.PersistenceGuardian._
 
   def accountBehavior: ActorSystem[_] => AccountBehavior[T, P]
 

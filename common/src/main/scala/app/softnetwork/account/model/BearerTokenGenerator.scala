@@ -34,15 +34,10 @@ object BearerTokenGenerator {
 
   val TOKEN_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_.-"
 
-//  val secureRandom = new SecureRandom()
-
   private def toHex(bytes: Array[Byte]): String = bytes.map("%02x".format(_)).mkString("")
 
-  private def sha(s: String): String = {
+  private def sha256(s: String): String = {
     toHex(MessageDigest.getInstance("SHA-256").digest(s.getBytes("UTF-8")))
-  }
-  private def md5(s: String): String = {
-    toHex(MessageDigest.getInstance("MD5").digest(s.getBytes("UTF-8")))
   }
 
   // use tail recursion, functional style to build string.
@@ -63,32 +58,18 @@ object BearerTokenGenerator {
     generateTokenAccumulator("", tokenLength)
   }
 
-  /** Hash the Token to return a 32 character HEX String
-    *
-    * @param tokenprefix:
-    *   string to concatenate with random generated token prior to HASH to improve uniqueness, such
-    *   as username
-    *
-    * @return
-    *   MD5 hash of (username + current time + random token generator) as token, 128 bits, 32
-    *   characters
-    */
-  def generateMD5Token(tokenprefix: String): String = {
-    md5(tokenprefix + System.nanoTime() + generateToken(TOKEN_LENGTH))
-  }
-
   /** Hash the Token to return a 64 character HEX String
     *
-    * @param tokenprefix:
+    * @param tokenPrefix:
     *   string to concatenate with random generated token prior to HASH to improve uniqueness, such
     *   as username
     *
     * @return
-    *   SHA-256 hash of (username + current time + random token generator) as token, 256 bits, 64
-    *   characters
+    *   SHA-256 hash of (token prefix + current time + random token generator) as token, 256 bits,
+    *   64 characters
     */
-  def generateSHAToken(tokenprefix: String): String = {
-    sha(tokenprefix + System.nanoTime() + generateToken(TOKEN_LENGTH))
+  def generateSHAToken(tokenPrefix: String): String = {
+    sha256(tokenPrefix + System.nanoTime() + generateToken(TOKEN_LENGTH))
   }
 
 }

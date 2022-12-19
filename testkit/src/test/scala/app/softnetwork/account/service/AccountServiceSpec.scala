@@ -4,7 +4,7 @@ import akka.actor.typed.ActorSystem
 import org.scalatest.wordspec.AnyWordSpecLike
 import app.softnetwork.persistence._
 import org.softnetwork.notification.model.Platform
-import app.softnetwork.account.config.Settings
+import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.message._
 import app.softnetwork.account.model._
 import app.softnetwork.account.handlers.MockGenerator._
@@ -187,7 +187,7 @@ class AccountServiceSpec
     }
     "disable account after n login failures" in {
       this ! (gsm, Login(gsm, pwd))
-      val failures = (0 to Settings.MaxLoginFailures) // max number of failures + 1
+      val failures = (0 to AccountSettings.MaxLoginFailures) // max number of failures + 1
         .map(_ => run(gsm, Login(gsm, "fake")))
       failures.last await {
         case AccountDisabled => succeed

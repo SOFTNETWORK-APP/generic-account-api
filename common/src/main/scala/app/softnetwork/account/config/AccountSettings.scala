@@ -7,7 +7,7 @@ import com.typesafe.scalalogging.StrictLogging
 import configs.Configs
 import Password._
 
-object Settings extends StrictLogging {
+object AccountSettings extends StrictLogging {
 
   lazy val config: Config = ConfigFactory.load()
 

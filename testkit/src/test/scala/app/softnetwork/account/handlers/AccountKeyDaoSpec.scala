@@ -3,11 +3,11 @@ package app.softnetwork.account.handlers
 import org.scalatest.wordspec.AnyWordSpecLike
 import app.softnetwork.account.scalatest.BasicAccountTestKit
 
+import AccountKeyDao._
+
 /** Created by smanciot on 19/04/2020.
   */
 class AccountKeyDaoSpec extends AnyWordSpecLike with BasicAccountTestKit {
-
-  import AccountKeyDao._
 
   "AccountKey" must {
     "add key" in {

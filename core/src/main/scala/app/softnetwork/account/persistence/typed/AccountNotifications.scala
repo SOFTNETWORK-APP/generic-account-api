@@ -7,9 +7,8 @@ import mustache.Mustache
 import org.apache.commons.text.StringEscapeUtils
 import org.slf4j.Logger
 import org.softnetwork.notification.model._
-import org.softnetwork.notification.model.NotificationType
 import app.softnetwork.notification.serialization._
-import app.softnetwork.account.config.Settings._
+import app.softnetwork.account.config.AccountSettings._
 import app.softnetwork.account.message.AccountToNotificationCommandEvent
 import app.softnetwork.account.model._
 import org.softnetwork.notification.message.{

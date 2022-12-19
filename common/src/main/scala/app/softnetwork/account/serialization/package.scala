@@ -7,6 +7,8 @@ import app.softnetwork.notification.serialization._
 import app.softnetwork.account.model._
 import org.json4s.Formats
 
+import scalapb.TypeMapper
+
 /** Created by smanciot on 16/05/2018.
   */
 package object serialization {
@@ -20,7 +22,6 @@ package object serialization {
     )
 
   object Protobuf {
-    import scalapb.TypeMapper
 
     implicit val accountDetailsTypeMapper: TypeMapper[BasicAccountDetails, AccountDetails] =
       new TypeMapper[BasicAccountDetails, AccountDetails] {

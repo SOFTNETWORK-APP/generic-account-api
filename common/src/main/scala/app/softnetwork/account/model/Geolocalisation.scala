@@ -13,7 +13,7 @@ object Geolocalisation {
     */
   def distance(from: Poi, to: Poi): Double = {
 
-    val R: Int = 6371 // Radius of the earth
+    val r: Int = 6371 // Radius of the earth
 
     val latDistance = Math.toRadians(to.latitude - from.latitude)
 
@@ -28,7 +28,7 @@ object Geolocalisation {
 
     val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 
-    var distance = R * c * 1000 // convert to meters
+    var distance = r * c * 1000 // convert to meters
 
     val height = from.endAltitude - to.endAltitude
 

@@ -1,14 +1,14 @@
 package app.softnetwork.account.model
 
-import app.softnetwork.security.Sha512Encryption
-import app.softnetwork.account.config.Settings
+import app.softnetwork.security.Sha512Encryption._
+import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.message.{InitAdminAccount, SignUp}
+
+import app.softnetwork.persistence._
 
 /** Created by smanciot on 03/04/2018.
   */
 trait BasicAccountCompanion {
-
-  import Sha512Encryption._
 
   /** alias for email * */
   type Email = String
@@ -25,11 +25,7 @@ trait BasicAccountCompanion {
 
   def apply(command: SignUp, uuid: Option[String]): Option[BasicAccount] = {
     import command._
-    val _confirmPassword = confirmPassword match {
-      case Some(p) => p
-      case _       => password
-    }
-    if (!password.equals(_confirmPassword))
+    if (!password.equals(confirmPassword.getOrElse(password)))
       None
     else {
       val principal = Principal(login.trim)
@@ -39,12 +35,11 @@ trait BasicAccountCompanion {
       }
       val status =
         if (
-          !admin && Settings.ActivationEnabled && principal.`type` == PrincipalType.Email
+          !admin && AccountSettings.ActivationEnabled && principal.`type` == PrincipalType.Email
         ) /* TODO Push notifications */
           AccountStatus.Inactive
         else
           AccountStatus.Active
-      import app.softnetwork.persistence._
       val basicAccount =
         BasicAccount.defaultInstance
           .withUuid(uuid.getOrElse(generateUUID()))

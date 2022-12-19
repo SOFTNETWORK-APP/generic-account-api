@@ -6,10 +6,7 @@ import app.softnetwork.notification.scalatest.AllNotificationsTestKit
 import app.softnetwork.account.handlers.MockBasicAccountHandler
 import app.softnetwork.account.model.{BasicAccount, BasicAccountProfile}
 import app.softnetwork.account.persistence.query.AccountEventProcessorStreams.InternalAccountEvents2AccountProcessorStream
-import app.softnetwork.account.persistence.typed.{
-  AccountBehavior,
-  MockBasicAccountBehavior
-}
+import app.softnetwork.account.persistence.typed.{AccountBehavior, MockBasicAccountBehavior}
 import app.softnetwork.persistence.query.InMemoryJournalProvider
 import org.scalatest.Suite
 

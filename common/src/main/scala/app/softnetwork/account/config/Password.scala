@@ -2,6 +2,8 @@ package app.softnetwork.account.config
 
 import java.util.regex.Matcher
 
+import scala.collection.JavaConverters._
+
 import org.passay._
 
 /** Created by smanciot on 11/04/2018.
@@ -40,7 +42,6 @@ object Password {
     )
 
     def validate(password: String): Either[Seq[String], Boolean] = {
-      import scala.collection.JavaConverters._
       val validator = new PasswordValidator(rules: _*)
       val result = validator.validate(new PasswordData(password))
       if (result.isValid)

@@ -7,7 +7,7 @@ import app.softnetwork.security.Sha512Encryption
 import org.apache.commons.text.StringEscapeUtils
 import org.slf4j.Logger
 import app.softnetwork.persistence.typed._
-import app.softnetwork.account.config.Settings._
+import app.softnetwork.account.config.AccountSettings._
 import app.softnetwork.account.handlers._
 import app.softnetwork.account.message._
 import Sha512Encryption._
@@ -15,7 +15,7 @@ import app.softnetwork.notification.api.NotificationClient
 import app.softnetwork.notification.config.NotificationSettings
 import app.softnetwork.account.model._
 import app.softnetwork.persistence._
-import app.softnetwork.account.config.{Password, Settings}
+import app.softnetwork.account.config.{AccountSettings, Password}
 import app.softnetwork.validation.{EmailValidator, GsmValidator}
 import org.softnetwork.notification.message.NotificationCommandEvent
 
@@ -48,7 +48,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
   /** @return
     *   node role required to start this actor
     */
-  override def role: String = Settings.AkkaNodeRole
+  override def role: String = AccountSettings.AkkaNodeRole
 
   override protected def tagEvent(entityId: String, event: AccountEvent): Set[String] = {
     event match {
@@ -386,8 +386,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
 
       case cmd: ResetPassword =>
         import cmd._
-        val _confirmedPassword = confirmedPassword.getOrElse(newPassword)
-        if (!newPassword.equals(_confirmedPassword)) {
+        if (!newPassword.equals(confirmedPassword.getOrElse(newPassword))) {
           Effect.none.thenRun(_ => PasswordsNotMatched ~> replyTo)
         } else {
           rules.validate(newPassword) match {
@@ -454,8 +453,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
       /** handle update password * */
       case cmd: UpdatePassword =>
         import cmd._
-        val _confirmedPassword = confirmedPassword.getOrElse(newPassword)
-        if (!newPassword.equals(_confirmedPassword)) {
+        if (!newPassword.equals(confirmedPassword.getOrElse(newPassword))) {
           Effect.none.thenRun(_ => PasswordsNotMatched ~> replyTo)
         } else {
           rules.validate(newPassword) match {
