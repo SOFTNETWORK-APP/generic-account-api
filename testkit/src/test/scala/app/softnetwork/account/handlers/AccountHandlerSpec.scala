@@ -1,14 +1,11 @@
 package app.softnetwork.account.handlers
 
 import org.scalatest.wordspec.AnyWordSpecLike
-import org.softnetwork.notification.model.Platform
 import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.message._
 import app.softnetwork.account.model._
 import app.softnetwork.account.scalatest.BasicAccountTestKit
-
 import app.softnetwork.persistence._
-
 import MockGenerator._
 
 /** Created by smanciot on 18/04/2020.
@@ -36,8 +33,6 @@ class AccountHandlerSpec
 
   private val gsm2 = "33660020304"
 
-  private val regId = "regId"
-
   private val password = "Changeit1"
 
   private val wrongPassword = "password"
@@ -57,6 +52,8 @@ class AccountHandlerSpec
   private val gsmUuid2: String = generateUUID(Some(gsm2))
 
   private val anonymousUuid: String = generateUUID(Some(anonymous))
+
+  private val devices = Seq(iosDevice, androidDevice)
 
   "Anonymous SignUp" should {
     "work" in {
@@ -280,6 +277,26 @@ class AccountHandlerSpec
     }
   }
 
+  "Device" should {
+    "be registered" in {
+      devices.map(device =>
+        this ?? (gsmUuid, RegisterDevice(
+          gsmUuid,
+          DeviceRegistration(device.regId, device.platform)
+        )) await {
+          case DeviceRegistered => succeed
+          case other            => fail(other.getClass.toString)
+        }
+      )
+    }
+    "be unregistered" in {
+      this ?? (gsmUuid, UnregisterDevice(gsmUuid, androidDevice.regId)) await {
+        case DeviceUnregistered => succeed
+        case other              => fail(other.getClass.toString)
+      }
+    }
+  }
+
   "SendVerificationCode" should {
     "work with gsm" in {
       this ?? (gsm, SendVerificationCode(gsm)) await {
@@ -357,38 +374,18 @@ class AccountHandlerSpec
     }
   }
 
-  "Device" should {
-    "be registered" in {
-      this ?? (generateUUID(Some(computeEmail("DeviceRegistration"))), SignUp(
-        computeEmail("DeviceRegistration"),
+  "Unsubscribe" should {
+    "work" in {
+      this ?? (generateUUID(Some(computeEmail("Unsubscribe"))), SignUp(
+        computeEmail("Unsubscribe"),
         password
       )) await {
         case r: AccountCreated =>
           r.account.status shouldBe AccountStatus.Inactive
-          this ?? (generateUUID(Some(computeEmail("DeviceRegistration"))), RegisterDevice(
-            generateUUID(Some(computeEmail("DeviceRegistration"))),
-            DeviceRegistration(regId, Platform.IOS)
-          )) await {
-            case DeviceRegistered => succeed
-            case _                => fail()
-          }
         case _ => fail()
       }
-    }
-
-    "be unregistered" in {
-      this ?? (generateUUID(Some(computeEmail("DeviceRegistration"))),
-      UnregisterDevice(generateUUID(Some(computeEmail("DeviceRegistration"))), regId)) await {
-        case DeviceUnregistered => succeed
-        case _                  => fail()
-      }
-    }
-  }
-
-  "Unsubscribe" should {
-    "work" in {
-      this ?? (generateUUID(Some(computeEmail("DeviceRegistration"))), Unsubscribe(
-        generateUUID(Some(computeEmail("DeviceRegistration")))
+      this ?? (generateUUID(Some(computeEmail("Unsubscribe"))), Unsubscribe(
+        generateUUID(Some(computeEmail("Unsubscribe")))
       )) await {
         case _: AccountDeleted => succeed
         case _                 => fail()
