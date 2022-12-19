@@ -40,6 +40,8 @@ class AccountHandlerSpec
 
   private val password = "Changeit1"
 
+  private val wrongPassword = "password"
+
   private val newPassword = "Changeit2"
 
   private val usernameUuid: String = generateUUID(Some(username))
@@ -72,6 +74,16 @@ class AccountHandlerSpec
   }
 
   "SignUp" should {
+    "fail with wrong password" in {
+      this ?? (usernameUuid, SignUp(username, wrongPassword, None)) await {
+        case r: InvalidPassword =>
+          assert(r.errors.contains("UPPER_CASE_CHARACTER"))
+          assert(r.errors.contains("NUMBER_CHARACTER"))
+          succeed
+        case _ => fail()
+      }
+    }
+
     "fail if confirmed password does not match password" in {
       this ?? (usernameUuid, SignUp(username, password, Some("fake"))) await {
         case PasswordsNotMatched => succeed
