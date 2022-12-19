@@ -6,10 +6,9 @@ import app.softnetwork.persistence.typed.scaladsl.EntityPattern
 import app.softnetwork.persistence.typed.CommandTypeKey
 import org.softnetwork.notification.model.NotificationType
 import app.softnetwork.account.message._
-import app.softnetwork.account.persistence.typed.{
-  BasicAccountBehavior,
-  MockBasicAccountBehavior
-}
+import app.softnetwork.account.persistence.typed.{BasicAccountBehavior, MockBasicAccountBehavior}
+
+import app.softnetwork.persistence._
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.reflect.ClassTag
@@ -52,8 +51,6 @@ trait AccountHandler extends EntityPattern[AccountCommand, AccountCommandResult]
 }
 
 trait AccountDao { _: AccountHandler =>
-
-  import app.softnetwork.persistence._
 
   def initAdminAccount(login: String, password: String)(implicit system: ActorSystem[_]): Unit = { // FIXME
     this ! (generateUUID(Some(login)), new InitAdminAccount(login, password)) /*match {

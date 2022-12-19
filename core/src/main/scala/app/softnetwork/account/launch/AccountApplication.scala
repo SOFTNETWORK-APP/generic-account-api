@@ -4,7 +4,7 @@ import akka.actor.typed.ActorSystem
 import app.softnetwork.api.server.launch.Application
 import app.softnetwork.notification.model.Notification
 import app.softnetwork.persistence.query.SchemaProvider
-import app.softnetwork.account.config.Settings
+import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.handlers.AccountDao
 import app.softnetwork.account.model.{Account, AccountDecorator, Profile, ProfileDecorator}
 
@@ -21,7 +21,7 @@ trait AccountApplication[
   def accountDao: AccountDao
 
   def initAuthSystem: ActorSystem[_] => Unit = system => {
-    val root = Settings.AdministratorsConfig.root
+    val root = AccountSettings.AdministratorsConfig.root
     accountDao.initAdminAccount(root.login, root.password)(system)
   }
 

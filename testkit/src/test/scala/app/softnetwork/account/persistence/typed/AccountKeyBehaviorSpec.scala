@@ -6,11 +6,11 @@ import app.softnetwork.account.scalatest.BasicAccountTestKit
 import org.scalatest.wordspec.AnyWordSpecLike
 import app.softnetwork.persistence.message.CommandWrapper
 
+import AccountKeyBehavior._
+
 /** Created by smanciot on 19/04/2020.
   */
 class AccountKeyBehaviorSpec extends AnyWordSpecLike with BasicAccountTestKit {
-
-  import AccountKeyBehavior._
 
   val kvProbe: TestProbe[KvCommandResult] = createTestProbe[KvCommandResult]()
 

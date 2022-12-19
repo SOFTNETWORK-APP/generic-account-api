@@ -4,11 +4,13 @@ import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model.{HttpHeader, HttpMessage, StatusCodes}
 import app.softnetwork.api.server.config.ServerSettings.RootPath
 import app.softnetwork.notification.model.Notification
-import app.softnetwork.account.config.Settings.Path
+import app.softnetwork.account.config.AccountSettings.Path
 import app.softnetwork.account.handlers.MockBasicAccountDao
 import app.softnetwork.account.message.{AccountCreated, Login, Logout, SignUp}
 import app.softnetwork.account.model.{BasicAccount, BasicAccountProfile}
 import app.softnetwork.account.service.{AccountService, MockBasicAccountService}
+import app.softnetwork.serialization._
+
 import org.scalatest.Suite
 
 import scala.util.{Failure, Success}
@@ -22,8 +24,6 @@ trait BasicAccountRouteTestKit
     MockBasicAccountService(system)
 
   var cookies: Seq[HttpHeader] = Seq.empty
-
-  import app.softnetwork.serialization._
 
   def signUp(uuid: String, login: String, password: String): Boolean = {
     MockBasicAccountDao ?? (uuid, SignUp(login, password)) await {

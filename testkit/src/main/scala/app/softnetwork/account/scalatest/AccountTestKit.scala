@@ -3,7 +3,7 @@ package app.softnetwork.account.scalatest
 import akka.actor.typed.ActorSystem
 import app.softnetwork.notification.model.Notification
 import app.softnetwork.notification.scalatest.NotificationTestKit
-import app.softnetwork.account.config.Settings
+import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.launch.AccountGuardian
 import app.softnetwork.account.model.{Account, AccountDecorator, Profile, ProfileDecorator}
 import org.scalatest.Suite
@@ -19,6 +19,6 @@ trait AccountTestKit[
   /** @return
     *   roles associated with this node
     */
-  override def roles: Seq[String] = super.roles :+ Settings.AkkaNodeRole
+  override def roles: Seq[String] = super.roles :+ AccountSettings.AkkaNodeRole
 
 }

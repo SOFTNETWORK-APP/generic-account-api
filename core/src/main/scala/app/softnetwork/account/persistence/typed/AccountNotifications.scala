@@ -7,9 +7,8 @@ import mustache.Mustache
 import org.apache.commons.text.StringEscapeUtils
 import org.slf4j.Logger
 import org.softnetwork.notification.model._
-import org.softnetwork.notification.model.NotificationType
 import app.softnetwork.notification.serialization._
-import app.softnetwork.account.config.Settings._
+import app.softnetwork.account.config.AccountSettings._
 import app.softnetwork.account.message.AccountToNotificationCommandEvent
 import app.softnetwork.account.model._
 import org.softnetwork.notification.message.{
@@ -152,10 +151,23 @@ trait AccountNotifications[T <: Account] extends Completion {
     maxTries: Int = 1,
     deferred: Option[Date] = None
   )(implicit log: Logger, system: ActorSystem[_]): Seq[AccountToNotificationCommandEvent] = {
-    log.info(s"about to send notification to ${account.primaryPrincipal.value}\r\n$body")
-    channels.flatMap(channel =>
+    log.info(
+      s"about to send notification to ${account.primaryPrincipal.value} for channels [${channels
+        .mkString(",")}]\r\n$body"
+    )
+    val notifications = channels.flatMap(channel =>
       addNotificationByChannel(uuid, account, subject, body, channel, maxTries, deferred)
     )
+    for (notification <- notifications) {
+      if (notification.wrapped.isAddMail) {
+        log.info(s"add mail to ${account.primaryPrincipal.value}")
+      } else if (notification.wrapped.isAddSMS) {
+        log.info(s"add sms to ${account.primaryPrincipal.value}")
+      } else if (notification.wrapped.isAddPush) {
+        log.info(s"add push to ${account.primaryPrincipal.value}")
+      }
+    }
+    notifications
   }
 
   def sendActivation(

@@ -4,7 +4,6 @@ import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.{Directives, Route}
 import akka.http.scaladsl.server.directives.Credentials
-import app.softnetwork.api.server.DefaultComplete
 import app.softnetwork.persistence.service.Service
 import com.softwaremill.session.CsrfDirectives._
 import com.softwaremill.session.CsrfOptions._
@@ -13,7 +12,7 @@ import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import app.softnetwork.api.server._
 import app.softnetwork.concurrent.Completion.AwaitCompletion
 import app.softnetwork.persistence.typed.CommandTypeKey
-import app.softnetwork.account.config.Settings
+import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.handlers.{
   AccountHandler,
   BasicAccountTypeKey,
@@ -29,6 +28,10 @@ import org.json4s.{jackson, Formats}
 
 import scala.util.{Failure, Success}
 
+import Session._
+
+import app.softnetwork.persistence._
+
 /** Created by smanciot on 23/04/2020.
   */
 trait AccountService
@@ -40,16 +43,12 @@ trait AccountService
     with Json4sSupport
     with StrictLogging { _: CommandTypeKey[AccountCommand] =>
 
-  import Session._
-
-  import app.softnetwork.persistence._
-
   implicit def formats: Formats = authFormats
 
   implicit def serialization: Serialization.type = jackson.Serialization
 
   val route: Route = {
-    pathPrefix(Settings.Path) {
+    pathPrefix(AccountSettings.Path) {
       anonymous ~
       signUp ~
       principal ~
@@ -115,7 +114,7 @@ trait AccountService
               val account = r.account
               lazy val completion =
                 complete(HttpResponse(status = StatusCodes.Created, entity = account.view))
-              if (!Settings.ActivationEnabled) {
+              if (!AccountSettings.ActivationEnabled) {
                 // create a new session
                 val session = Session(account.uuid)
                 session += (Session.anonymousKey, false)
@@ -161,7 +160,7 @@ trait AccountService
 
   lazy val basic: Route = path("basic") {
     post {
-      authenticateBasic(Settings.Realm, BasicAuthAuthenticator) { account =>
+      authenticateBasic(AccountSettings.Realm, BasicAuthAuthenticator) { account =>
         // create a new session
         val session = Session(account.uuid)
         session += (Session.adminKey, account.isAdmin)
