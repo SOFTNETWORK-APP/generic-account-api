@@ -191,10 +191,15 @@ class AccountServiceSpec
         case _                       => fail()
       }
       (0 until AccountSettings.MaxLoginFailures) // max number of failures
-        .map(_ => run(gsm, Login(gsm, "fake")))
+        .map(_ =>
+          run(gsm, Login(gsm, "fake")) await {
+            case LoginAndPasswordNotMatched => succeed
+            case other                      => fail(other.getClass.toString)
+          }
+        )
       run(gsm, Login(gsm, "fake")) await {
         case AccountDisabled => succeed
-        case _               => fail()
+        case other           => fail(other.getClass.toString)
       }
     }
   }

@@ -255,7 +255,12 @@ class AccountHandlerSpec
         case _                       => fail()
       }
       (0 until AccountSettings.MaxLoginFailures) // max number of failures
-        .map(_ => this ?? (gsm, Login(gsm, "fake")))
+        .map(_ =>
+          this ?? (gsm, Login(gsm, "fake")) await {
+            case LoginAndPasswordNotMatched => succeed
+            case other                      => fail(other.getClass.toString)
+          }
+        )
       this ?? (gsm, Login(gsm, "fake")) await {
         case AccountDisabled => succeed
         case other           => fail(other.getClass.toString)
