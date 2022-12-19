@@ -250,12 +250,15 @@ class AccountHandlerSpec
       }
     }
     "disable account after n login failures" in {
-      this ! (gsm, Login(gsm, password))
-      val failures = (0 to AccountSettings.MaxLoginFailures) // max number of failures + 1
+      this ?? (gsm, Login(gsm, password)) await {
+        case _: LoginSucceededResult => succeed
+        case _                       => fail()
+      }
+      (0 until AccountSettings.MaxLoginFailures) // max number of failures
         .map(_ => this ?? (gsm, Login(gsm, "fake")))
-      failures.last await {
+      this ?? (gsm, Login(gsm, "fake")) await {
         case AccountDisabled => succeed
-        case _               => fail()
+        case other           => fail(other.getClass.toString)
       }
     }
   }

@@ -151,10 +151,23 @@ trait AccountNotifications[T <: Account] extends Completion {
     maxTries: Int = 1,
     deferred: Option[Date] = None
   )(implicit log: Logger, system: ActorSystem[_]): Seq[AccountToNotificationCommandEvent] = {
-    log.info(s"about to send notification to ${account.primaryPrincipal.value}\r\n$body")
-    channels.flatMap(channel =>
+    log.info(
+      s"about to send notification to ${account.primaryPrincipal.value} for channels [${channels
+        .mkString(",")}]\r\n$body"
+    )
+    val notifications = channels.flatMap(channel =>
       addNotificationByChannel(uuid, account, subject, body, channel, maxTries, deferred)
     )
+    for (notification <- notifications) {
+      if (notification.wrapped.isAddMail) {
+        log.info(s"add mail to ${account.primaryPrincipal.value}")
+      } else if (notification.wrapped.isAddSMS) {
+        log.info(s"add sms to ${account.primaryPrincipal.value}")
+      } else if (notification.wrapped.isAddPush) {
+        log.info(s"add push to ${account.primaryPrincipal.value}")
+      }
+    }
+    notifications
   }
 
   def sendActivation(

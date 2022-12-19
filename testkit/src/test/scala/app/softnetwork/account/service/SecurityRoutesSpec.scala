@@ -236,13 +236,15 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
       Post(s"/$RootPath/${AccountSettings.Path}/login", Login(gsm, password)) ~> mainRoutes(
         typedSystem()
       ) // reset number of failures
-      val failures = (0 to AccountSettings.MaxLoginFailures) // max number of failures + 1
+      (0 until AccountSettings.MaxLoginFailures) // max number of failures
         .map(_ =>
           Post(s"/$RootPath/${AccountSettings.Path}/login", Login(gsm, "fake")) ~> mainRoutes(
             typedSystem()
           )
         )
-      failures.last ~> check {
+      Post(s"/$RootPath/${AccountSettings.Path}/login", Login(gsm, "fake")) ~> mainRoutes(
+        typedSystem()
+      ) ~> check {
         status shouldEqual StatusCodes.Unauthorized
         responseAs[AccountErrorMessage].message shouldEqual AccountDisabled.message
       }
