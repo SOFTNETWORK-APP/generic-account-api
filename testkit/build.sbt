@@ -8,6 +8,4 @@ name := "account-testkit"
 
 libraryDependencies ++= Seq(
   "app.softnetwork.notification" %% "notification-testkit" % Versions.notification
-//  "app.softnetwork.scheduler" %% "scheduler-testkit" % Versions.scheduler,
-//  "app.softnetwork.persistence" %% "persistence-session-testkit" % Versions.genericPersistence
 )
