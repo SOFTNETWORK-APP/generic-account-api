@@ -1,6 +1,8 @@
 package app.softnetwork.account.launch
 
 import akka.actor.typed.ActorSystem
+import app.softnetwork.account.config.AccountSettings
+import app.softnetwork.account.handlers.AccountDao
 import app.softnetwork.notification.launch.NotificationGuardian
 import app.softnetwork.notification.model.Notification
 import app.softnetwork.account.model.{Account, AccountDecorator, Profile, ProfileDecorator}
@@ -43,4 +45,15 @@ trait AccountGuardian[
       sys
     ) ++ authEventProcessorStreams(sys)
 
+  def accountDao: AccountDao
+
+  def initAuthSystem: ActorSystem[_] => Unit = system => {
+    val root = AccountSettings.AdministratorsConfig.root
+    accountDao.initAdminAccount(root.login, root.password)(system)
+  }
+
+  override def initSystem: ActorSystem[_] => Unit = system => {
+    initAuthSystem(system)
+    super.initSystem(system)
+  }
 }

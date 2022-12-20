@@ -3,7 +3,7 @@ package app.softnetwork.account.scalatest
 import akka.actor.typed.ActorSystem
 import app.softnetwork.notification.model.Notification
 import app.softnetwork.notification.scalatest.AllNotificationsTestKit
-import app.softnetwork.account.handlers.MockBasicAccountHandler
+import app.softnetwork.account.handlers.{AccountDao, MockBasicAccountDao, MockBasicAccountHandler}
 import app.softnetwork.account.model.{BasicAccount, BasicAccountProfile}
 import app.softnetwork.account.persistence.query.AccountEventProcessorStreams.InternalAccountEvents2AccountProcessorStream
 import app.softnetwork.account.persistence.typed.{AccountBehavior, MockBasicAccountBehavior}
@@ -27,4 +27,6 @@ trait BasicAccountTestKit
       override lazy val forTests: Boolean = true
       override implicit def system: ActorSystem[_] = sys
     }
+
+  override def accountDao: AccountDao = MockBasicAccountDao
 }

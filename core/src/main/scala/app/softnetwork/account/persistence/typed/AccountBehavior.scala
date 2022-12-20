@@ -874,7 +874,10 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
           account
             .copyWithRegistrations(
               account.registrations
-                .filterNot(_.deviceId.getOrElse("") == registration.deviceId.getOrElse(""))
+                .filterNot(reg =>
+                  reg.deviceId.isDefined && reg.deviceId.getOrElse("") == registration.deviceId
+                    .getOrElse("")
+                )
                 .filterNot(_.regId == registration.regId)
                 .+:(registration)
             )
