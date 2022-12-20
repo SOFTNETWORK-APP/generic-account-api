@@ -68,6 +68,12 @@ class AccountHandlerSpec
         case other => fail(other.getClass)
       }
     }
+    "fail if anonymous account already exists" in {
+      this ?? (anonymousUuid, SignUpAnonymous) await {
+        case AccountAlreadyExists =>
+        case other                => fail(other.getClass)
+      }
+    }
   }
 
   "SignUp" should {
