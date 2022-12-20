@@ -399,6 +399,15 @@ class AccountHandlerSpec
     }
   }
 
+  "Destroy" should {
+    "work" in {
+      this ?? (generateUUID(Some(computeEmail("Unsubscribe"))), DestroyAccount) await {
+        case r: AccountDestroyed =>
+        case _                   => fail()
+      }
+    }
+  }
+
   "Logout" should {
     "work" in {
       this ?? (usernameUuid, Logout) await {
