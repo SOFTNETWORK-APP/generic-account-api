@@ -78,15 +78,4 @@ trait BasicAccountTypeKey extends CommandTypeKey[AccountCommand] {
     BasicAccountBehavior.TypeKey
 }
 
-trait MockBasicAccountTypeKey extends CommandTypeKey[AccountCommand] {
-  override def TypeKey(implicit tTag: ClassTag[AccountCommand]): EntityTypeKey[AccountCommand] =
-    MockBasicAccountBehavior.TypeKey
-}
-
 object BasicAccountDao extends AccountDao with AccountHandler with BasicAccountTypeKey
-
-trait MockBasicAccountHandler extends AccountHandler with MockBasicAccountTypeKey
-
-object MockBasicAccountHandler extends MockBasicAccountHandler
-
-object MockBasicAccountDao extends AccountDao with AccountHandler with MockBasicAccountTypeKey

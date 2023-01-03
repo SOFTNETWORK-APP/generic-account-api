@@ -1,0 +1,5 @@
+package app.softnetwork.account.handlers
+
+object MockBasicAccountHandler extends MockBasicAccountHandler
+
+trait MockBasicAccountHandler extends AccountHandler with MockBasicAccountTypeKey
