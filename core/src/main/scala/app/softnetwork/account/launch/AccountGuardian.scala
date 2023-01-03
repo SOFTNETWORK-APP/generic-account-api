@@ -3,21 +3,19 @@ package app.softnetwork.account.launch
 import akka.actor.typed.ActorSystem
 import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.handlers.AccountDao
-import app.softnetwork.notification.launch.NotificationGuardian
-import app.softnetwork.notification.model.Notification
 import app.softnetwork.account.model.{Account, AccountDecorator, Profile, ProfileDecorator}
 import app.softnetwork.account.persistence.query.AccountEventProcessorStreams.InternalAccountEvents2AccountProcessorStream
 import app.softnetwork.account.persistence.typed.AccountBehavior
 import app.softnetwork.persistence.launch.PersistentEntity
 import app.softnetwork.persistence.query.{EventProcessorStream, SchemaProvider}
 import app.softnetwork.persistence.launch.PersistenceGuardian._
+import app.softnetwork.scheduler.launch.SchedulerGuardian
 import app.softnetwork.session.launch.SessionGuardian
 
 trait AccountGuardian[
   T <: Account with AccountDecorator,
-  P <: Profile with ProfileDecorator,
-  N <: Notification
-] extends NotificationGuardian[N]
+  P <: Profile with ProfileDecorator
+] extends SchedulerGuardian
     with SessionGuardian { _: SchemaProvider =>
 
   def accountBehavior: ActorSystem[_] => AccountBehavior[T, P]
@@ -30,7 +28,7 @@ trait AccountGuardian[
   /** initialize all entities
     */
   override def entities: ActorSystem[_] => Seq[PersistentEntity[_, _, _, _]] = sys =>
-    schedulerEntities(sys) ++ notificationEntities(sys) ++ sessionEntities(sys) ++ accountEntities(
+    schedulerEntities(sys) ++ sessionEntities(sys) ++ accountEntities(
       sys
     )
 
@@ -43,9 +41,7 @@ trait AccountGuardian[
   /** initialize all event processor streams
     */
   override def eventProcessorStreams: ActorSystem[_] => Seq[EventProcessorStream[_]] = sys =>
-    schedulerEventProcessorStreams(sys) ++ notificationEventProcessorStreams(
-      sys
-    ) ++ accountEventProcessorStreams(sys)
+    schedulerEventProcessorStreams(sys) ++ accountEventProcessorStreams(sys)
 
   def accountDao: AccountDao
 

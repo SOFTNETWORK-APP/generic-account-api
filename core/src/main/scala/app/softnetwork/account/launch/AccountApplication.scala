@@ -1,7 +1,6 @@
 package app.softnetwork.account.launch
 
 import app.softnetwork.api.server.launch.Application
-import app.softnetwork.notification.model.Notification
 import app.softnetwork.persistence.query.SchemaProvider
 import app.softnetwork.account.model.{Account, AccountDecorator, Profile, ProfileDecorator}
 
@@ -9,10 +8,9 @@ import app.softnetwork.account.model.{Account, AccountDecorator, Profile, Profil
   */
 trait AccountApplication[
   T <: Account with AccountDecorator,
-  P <: Profile with ProfileDecorator,
-  N <: Notification
+  P <: Profile with ProfileDecorator
 ] extends Application
-    with AccountRoutes[T, P, N] {
+    with AccountRoutes[T, P] {
   self: SchemaProvider =>
 
 }

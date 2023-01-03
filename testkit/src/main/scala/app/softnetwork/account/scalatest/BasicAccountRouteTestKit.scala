@@ -16,8 +16,8 @@ import org.scalatest.Suite
 import scala.util.{Failure, Success}
 
 trait BasicAccountRouteTestKit
-    extends AccountRouteTestKit[BasicAccount, BasicAccountProfile, Notification]
-    with BasicAccountTestKit {
+    extends BasicAccountTestKit
+    with AccountRouteTestKit[BasicAccount, BasicAccountProfile, Notification] {
   _: Suite =>
 
   override def accountService: ActorSystem[_] => AccountService = system =>

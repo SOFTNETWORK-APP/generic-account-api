@@ -39,7 +39,7 @@ trait AccountService
     with Json4sSupport
     with StrictLogging { _: CommandTypeKey[AccountCommand] =>
 
-  implicit def formats: Formats = authFormats
+  implicit def formats: Formats = accountFormats
 
   implicit def serialization: Serialization.type = jackson.Serialization
 

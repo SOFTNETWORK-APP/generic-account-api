@@ -6,6 +6,8 @@ object Versions {
 
   val notification = "0.1.6.2"
 
+  val scheduler = "0.1.4.1"
+
   val server = "0.2.6.2"
 
   val session = "0.1.0"
