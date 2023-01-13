@@ -14,7 +14,7 @@ trait BasicAccountApi
     extends AccountApplication[BasicAccount, BasicAccountProfile]
     with JdbcSchemaProvider {
 
-  def jdbcSchemaType: SchemaType = this.schemaType
+  def internalSchemaType: SchemaType = this.schemaType
 
   override def accountDao: AccountDao = BasicAccountDao
 
@@ -31,7 +31,7 @@ trait BasicAccountApi
       with JdbcJournalProvider
       with JdbcSchemaProvider {
       override def tag: String = s"${BasicAccountBehavior.persistenceId}-to-internal"
-      override lazy val schemaType: JdbcSchema.SchemaType = jdbcSchemaType
+      override lazy val schemaType: JdbcSchema.SchemaType = internalSchemaType
       override implicit def system: ActorSystem[_] = sys
     }
 
