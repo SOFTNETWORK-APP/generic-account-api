@@ -3,7 +3,7 @@ package app.softnetwork.account.service
 import akka.actor.typed.ActorSystem
 import org.scalatest.wordspec.AnyWordSpecLike
 import app.softnetwork.persistence._
-import org.softnetwork.notification.model.Platform
+import app.softnetwork.notification.model.Platform
 import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.message._
 import app.softnetwork.account.model._

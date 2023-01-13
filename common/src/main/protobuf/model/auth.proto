@@ -49,7 +49,7 @@ message DeviceRegistration {
     option (scalapb.message).extends = "ProtobufDomainObject";
     option (scalapb.message).companion_extends = "DeviceRegistrationCompanion";
     required string regId = 1;
-    required org.softnetwork.notification.model.Platform platform = 2;
+    required app.softnetwork.notification.model.Platform platform = 2;
     optional string applicationId = 3;
     optional string deviceId = 4;
     extensions 100 to max;

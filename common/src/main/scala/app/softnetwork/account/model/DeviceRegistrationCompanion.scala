@@ -1,6 +1,6 @@
 package app.softnetwork.account.model
 
-import org.softnetwork.notification.model.Platform
+import app.softnetwork.notification.model.Platform
 
 trait DeviceRegistrationCompanion {
   def apply(regId: String, platform: String, applicationId: Option[String]): DeviceRegistration =

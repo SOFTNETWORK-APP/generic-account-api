@@ -13,7 +13,7 @@ import scalapb.TypeMapper
   */
 package object serialization {
 
-  val authFormats: Formats =
+  val accountFormats: Formats =
     notificationFormats ++
     Seq(
       GeneratedEnumSerializer(AccountStatus.enumCompanion),

@@ -1,20 +1,20 @@
 package app.softnetwork.account.api
 
 import akka.actor.typed.ActorSystem
-import app.softnetwork.notification.api.AllNotificationsApi
-import app.softnetwork.notification.model.Notification
 import app.softnetwork.account.handlers.{AccountDao, BasicAccountDao, BasicAccountTypeKey}
 import app.softnetwork.account.launch.AccountApplication
 import app.softnetwork.account.model.{BasicAccount, BasicAccountProfile}
 import app.softnetwork.account.persistence.query.AccountEventProcessorStreams.InternalAccountEvents2AccountProcessorStream
 import app.softnetwork.account.persistence.typed.{AccountBehavior, BasicAccountBehavior}
 import app.softnetwork.account.service.{AccountService, BasicAccountService}
+import app.softnetwork.persistence.jdbc.query.JdbcSchema.SchemaType
 import app.softnetwork.persistence.jdbc.query.{JdbcJournalProvider, JdbcSchema, JdbcSchemaProvider}
 
 trait BasicAccountApi
-    extends AllNotificationsApi
-    with AccountApplication[BasicAccount, BasicAccountProfile, Notification]
+    extends AccountApplication[BasicAccount, BasicAccountProfile]
     with JdbcSchemaProvider {
+
+  def internalSchemaType: SchemaType = this.schemaType
 
   override def accountDao: AccountDao = BasicAccountDao
 
@@ -31,7 +31,7 @@ trait BasicAccountApi
       with JdbcJournalProvider
       with JdbcSchemaProvider {
       override def tag: String = s"${BasicAccountBehavior.persistenceId}-to-internal"
-      override lazy val schemaType: JdbcSchema.SchemaType = jdbcSchemaType
+      override lazy val schemaType: JdbcSchema.SchemaType = internalSchemaType
       override implicit def system: ActorSystem[_] = sys
     }
 

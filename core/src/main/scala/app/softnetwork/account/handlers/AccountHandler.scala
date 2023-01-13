@@ -4,9 +4,9 @@ import akka.actor.typed.ActorSystem
 import akka.cluster.sharding.typed.scaladsl.EntityTypeKey
 import app.softnetwork.persistence.typed.scaladsl.EntityPattern
 import app.softnetwork.persistence.typed.CommandTypeKey
-import org.softnetwork.notification.model.NotificationType
+import app.softnetwork.notification.model.NotificationType
 import app.softnetwork.account.message._
-import app.softnetwork.account.persistence.typed.{BasicAccountBehavior, MockBasicAccountBehavior}
+import app.softnetwork.account.persistence.typed.BasicAccountBehavior
 
 import app.softnetwork.persistence._
 
@@ -78,15 +78,4 @@ trait BasicAccountTypeKey extends CommandTypeKey[AccountCommand] {
     BasicAccountBehavior.TypeKey
 }
 
-trait MockBasicAccountTypeKey extends CommandTypeKey[AccountCommand] {
-  override def TypeKey(implicit tTag: ClassTag[AccountCommand]): EntityTypeKey[AccountCommand] =
-    MockBasicAccountBehavior.TypeKey
-}
-
 object BasicAccountDao extends AccountDao with AccountHandler with BasicAccountTypeKey
-
-trait MockBasicAccountHandler extends AccountHandler with MockBasicAccountTypeKey
-
-object MockBasicAccountHandler extends MockBasicAccountHandler
-
-object MockBasicAccountDao extends AccountDao with AccountHandler with MockBasicAccountTypeKey

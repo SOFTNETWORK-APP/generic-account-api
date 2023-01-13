@@ -11,9 +11,3 @@ trait SecurityRoutes extends ApiRoutes {
   override def apiRoutes(system: ActorSystem[_]): Route = BasicAccountService(system).route
 
 }
-
-trait MockSecurityRoutes extends ApiRoutes {
-
-  override def apiRoutes(system: ActorSystem[_]): Route = MockBasicAccountService(system).route
-
-}

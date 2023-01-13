@@ -13,11 +13,7 @@ import app.softnetwork.api.server._
 import app.softnetwork.concurrent.Completion.AwaitCompletion
 import app.softnetwork.persistence.typed.CommandTypeKey
 import app.softnetwork.account.config.AccountSettings
-import app.softnetwork.account.handlers.{
-  AccountHandler,
-  BasicAccountTypeKey,
-  MockBasicAccountTypeKey
-}
+import app.softnetwork.account.handlers.{AccountHandler, BasicAccountTypeKey}
 import app.softnetwork.account.message._
 import app.softnetwork.account.model._
 import app.softnetwork.account.serialization._
@@ -43,7 +39,7 @@ trait AccountService
     with Json4sSupport
     with StrictLogging { _: CommandTypeKey[AccountCommand] =>
 
-  implicit def formats: Formats = authFormats
+  implicit def formats: Formats = accountFormats
 
   implicit def serialization: Serialization.type = jackson.Serialization
 
@@ -444,19 +440,9 @@ trait AccountService
 
 trait BasicAccountService extends AccountService with BasicAccountTypeKey
 
-trait MockBasicAccountService extends BasicAccountService with MockBasicAccountTypeKey
-
 object BasicAccountService {
   def apply(asystem: ActorSystem[_]): BasicAccountService = {
     new BasicAccountService {
-      override implicit def system: ActorSystem[_] = asystem
-    }
-  }
-}
-
-object MockBasicAccountService {
-  def apply(asystem: ActorSystem[_]): MockBasicAccountService = {
-    new MockBasicAccountService {
       override implicit def system: ActorSystem[_] = asystem
     }
   }

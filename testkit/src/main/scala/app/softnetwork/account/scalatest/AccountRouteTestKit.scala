@@ -11,5 +11,5 @@ trait AccountRouteTestKit[
   P <: Profile with ProfileDecorator,
   N <: Notification
 ] extends PersistenceScalatestRouteTest
-    with AccountRoutes[T, P, N]
+    with AccountRoutes[T, P]
     with AccountTestKit[T, P, N] { _: Suite => }

@@ -17,14 +17,18 @@ import app.softnetwork.account.model._
 import app.softnetwork.persistence._
 import app.softnetwork.account.config.{AccountSettings, Password}
 import app.softnetwork.validation.{EmailValidator, GsmValidator}
-import org.softnetwork.notification.message.NotificationCommandEvent
+import app.softnetwork.notification.message.{
+  ExternalEntityToNotificationEvent,
+  ExternalNotificationEvent,
+  NotificationCommandEvent
+}
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.language.{implicitConversions, postfixOps}
 import scala.reflect.ClassTag
 
 trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
-    extends EntityBehavior[AccountCommand, T, AccountEvent, AccountCommandResult]
+    extends EntityBehavior[AccountCommand, T, ExternalNotificationEvent, AccountCommandResult]
     with AccountNotifications[T] { self: Generator =>
 
   def accountKeyDao: AccountKeyDao = AccountKeyDao
@@ -50,7 +54,10 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
     */
   override def role: String = AccountSettings.AkkaNodeRole
 
-  override protected def tagEvent(entityId: String, event: AccountEvent): Set[String] = {
+  override protected def tagEvent(
+    entityId: String,
+    event: ExternalNotificationEvent
+  ): Set[String] = {
     event match {
       case _: NotificationCommandEvent =>
         Set(
@@ -93,7 +100,9 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
     command: AccountCommand,
     replyTo: Option[ActorRef[AccountCommandResult]],
     timers: TimerScheduler[AccountCommand]
-  )(implicit context: ActorContext[AccountCommand]): Effect[AccountEvent, Option[T]] = {
+  )(implicit
+    context: ActorContext[AccountCommand]
+  ): Effect[ExternalNotificationEvent, Option[T]] = {
     implicit val log: Logger = context.log
     implicit val system: ActorSystem[Nothing] = context.system
     implicit val ec: ExecutionContextExecutor = system.executionContext
@@ -107,7 +116,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
             state match {
               case Some(account) =>
                 Effect
-                  .persist[AccountEvent, Option[T]](
+                  .persist[ExternalNotificationEvent, Option[T]](
                     PasswordUpdatedEvent(
                       entityId,
                       encrypt(password),
@@ -125,7 +134,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                         .exists(principal => lookupAccount(principal.value).isDefined)
                     ) {
                       Effect
-                        .persist[AccountEvent, Option[T]](
+                        .persist[ExternalNotificationEvent, Option[T]](
                           createAccountCreatedEvent(account)
                         )
                         .thenRun(_ => AdminAccountInitialized ~> replyTo)
@@ -158,7 +167,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                         !secondaryPrincipals
                           .exists(principal => lookupAccount(principal.value).isDefined)
                       ) {
-                        val activationRequired = status.isInactive
+                        val activationRequired = status.isInactive && notificationsEnabled
                         val updatedAccount =
                           if (activationRequired) { // an activation is required
                             log.info(s"activation required for ${account.primaryPrincipal.value}")
@@ -178,7 +187,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                               .copyWithAnonymous(false)
                               .asInstanceOf[T]
                           }
-                        val notifications: Seq[AccountToNotificationCommandEvent] = {
+                        val notifications: Seq[ExternalEntityToNotificationEvent] = {
                           updatedAccount.verificationToken match {
                             case Some(verificationToken) =>
                               sendActivation(entityId, account, verificationToken)
@@ -191,7 +200,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                           }
                         }
                         Effect
-                          .persist[AccountEvent, Option[T]](
+                          .persist[ExternalNotificationEvent, Option[T]](
                             notifications.toList :+ createAccountCreatedEvent(updatedAccount)
                           )
                           .thenRun(_ => AccountCreated(updatedAccount) ~> replyTo)
@@ -217,7 +226,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                 ) {
                   val updatedAccount = account.copyWithAnonymous(true).asInstanceOf[T]
                   Effect
-                    .persist[AccountEvent, Option[T]](
+                    .persist[ExternalNotificationEvent, Option[T]](
                       createAccountCreatedEvent(updatedAccount)
                     )
                     .thenRun(_ => AccountCreated(updatedAccount) ~> replyTo)
@@ -245,7 +254,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                   accountKeyDao.addAccountKey(activationToken.token, entityId)
                   val notifications = sendActivation(entityId, account, activationToken)
                   Effect
-                    .persist[AccountEvent, Option[T]](
+                    .persist[ExternalNotificationEvent, Option[T]](
                       notifications.toList :+
                       VerificationTokenAdded(
                         entityId,
@@ -257,7 +266,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                   Effect.none.thenRun(_ => InvalidToken ~> replyTo)
                 } else {
                   Effect
-                    .persist[AccountEvent, Option[T]](
+                    .persist[ExternalNotificationEvent, Option[T]](
                       AccountActivatedEvent(entityId).withLastUpdated(now())
                     )
                     .thenRun(state => AccountActivated(state.getOrElse(account)) ~> replyTo)
@@ -303,7 +312,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
               accountKeyDao.addAccountKey(verificationCode.code, entityId)
               val notifications = sendVerificationCode(generateUUID(), account, verificationCode)
               Effect
-                .persist[AccountEvent, Option[T]](
+                .persist[ExternalNotificationEvent, Option[T]](
                   notifications.toList :+
                   VerificationCodeAdded(
                     entityId,
@@ -330,7 +339,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
               accountKeyDao.addAccountKey(verificationToken.token, entityId)
               val notifications = sendResetPassword(generateUUID(), account, verificationToken)
               Effect
-                .persist[AccountEvent, Option[T]](
+                .persist[ExternalNotificationEvent, Option[T]](
                   notifications.toList :+
                   VerificationTokenAdded(
                     entityId,
@@ -362,7 +371,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                     val notifications =
                       sendResetPassword(generateUUID(), account, verificationToken)
                     Effect
-                      .persist[AccountEvent, Option[T]](
+                      .persist[ExternalNotificationEvent, Option[T]](
                         notifications.toList :+
                         VerificationTokenAdded(
                           entityId,
@@ -401,7 +410,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                       case Some(verification) =>
                         if (!verification.expired) {
                           Effect
-                            .persist[AccountEvent, Option[T]](
+                            .persist[ExternalNotificationEvent, Option[T]](
                               PasswordUpdatedEvent(
                                 entityId,
                                 encrypt(newPassword),
@@ -425,7 +434,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                       case Some(verification) =>
                         if (!verification.expired) {
                           Effect
-                            .persist[AccountEvent, Option[T]](
+                            .persist[ExternalNotificationEvent, Option[T]](
                               PasswordUpdatedEvent(
                                 entityId,
                                 encrypt(newPassword),
@@ -465,7 +474,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                   import account._
                   if (checkEncryption(credentials, oldPassword)) {
                     Effect
-                      .persist[AccountEvent, Option[T]](
+                      .persist[ExternalNotificationEvent, Option[T]](
                         PasswordUpdatedEvent(
                           entityId,
                           encrypt(newPassword),
@@ -494,7 +503,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
         state match {
           case Some(_) if entityId == uuid =>
             Effect
-              .persist[AccountEvent, Option[T]](
+              .persist[ExternalNotificationEvent, Option[T]](
                 DeviceRegisteredEvent(
                   entityId,
                   registration
@@ -513,7 +522,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
             account.registrations.find(_.regId == regId) match {
               case Some(r) =>
                 Effect
-                  .persist[AccountEvent, Option[T]](
+                  .persist[ExternalNotificationEvent, Option[T]](
                     DeviceUnregisteredEvent(
                       entityId,
                       r
@@ -530,7 +539,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
         state match {
           case Some(_) =>
             Effect
-              .persist[AccountEvent, Option[T]](
+              .persist[ExternalNotificationEvent, Option[T]](
                 AccountDeletedEvent(entityId).withLastUpdated(now())
               )
               .thenRun(state => AccountDeleted(state.get) ~> replyTo)
@@ -541,7 +550,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
         state match {
           case Some(_) =>
             Effect
-              .persist[AccountEvent, Option[T]](
+              .persist[ExternalNotificationEvent, Option[T]](
                 AccountDestroyedEvent(entityId).withLastUpdated(now())
               )
               .thenRun(_ => AccountDestroyed(entityId) ~> replyTo)
@@ -616,7 +625,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
               Effect.none.thenRun(_ => EmailAlreadyExists ~> replyTo)
             } else {
               Effect
-                .persist[AccountEvent, Option[T]](
+                .persist[ExternalNotificationEvent, Option[T]](
                   createProfileUpdatedEvent(
                     entityId,
                     account.completeProfile(profile).asInstanceOf[P],
@@ -637,7 +646,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
         state match {
           case Some(account) =>
             Effect
-              .persist[AccountEvent, Option[T]](
+              .persist[ExternalNotificationEvent, Option[T]](
                 ProfileSwitchedEvent(
                   entityId,
                   name
@@ -720,14 +729,14 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
     entityId: String,
     state: Option[T],
     replyTo: Option[ActorRef[AccountCommandResult]]
-  )(implicit log: Logger, system: ActorSystem[_]): Effect[AccountEvent, Option[T]] = {
+  )(implicit log: Logger, system: ActorSystem[_]): Effect[ExternalNotificationEvent, Option[T]] = {
     state match {
       case Some(account) if account.status.isActive || account.status.isDeleted =>
         val checkLogin =
           account.principals.exists(_.value == login) //check login against account principal
         if (checkLogin && verify(account.credentials)) {
           Effect
-            .persist[AccountEvent, Option[T]](
+            .persist[ExternalNotificationEvent, Option[T]](
               LoginSucceeded(
                 entityId,
                 now(),
@@ -741,7 +750,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
           val nbLoginFailures = account.nbLoginFailures + 1
           val disabled = nbLoginFailures > maxLoginFailures // disable account
           Effect
-            .persist[AccountEvent, Option[T]](
+            .persist[ExternalNotificationEvent, Option[T]](
               if (disabled)
                 AccountDisabledEvent(
                   entityId,
@@ -786,7 +795,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
     * @return
     *   new state
     */
-  override def handleEvent(state: Option[T], event: AccountEvent)(implicit
+  override def handleEvent(state: Option[T], event: ExternalNotificationEvent)(implicit
     context: ActorContext[_]
   ): Option[T] = {
     implicit val system: ActorSystem[Nothing] = context.system
