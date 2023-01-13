@@ -9,14 +9,12 @@ import app.softnetwork.account.persistence.typed.AccountBehavior
 import app.softnetwork.persistence.launch.PersistentEntity
 import app.softnetwork.persistence.query.{EventProcessorStream, SchemaProvider}
 import app.softnetwork.persistence.launch.PersistenceGuardian._
-import app.softnetwork.scheduler.launch.SchedulerGuardian
 import app.softnetwork.session.launch.SessionGuardian
 
 trait AccountGuardian[
   T <: Account with AccountDecorator,
   P <: Profile with ProfileDecorator
-] extends SchedulerGuardian
-    with SessionGuardian { _: SchemaProvider =>
+] extends SessionGuardian { _: SchemaProvider =>
 
   def accountBehavior: ActorSystem[_] => AccountBehavior[T, P]
 
@@ -28,7 +26,7 @@ trait AccountGuardian[
   /** initialize all entities
     */
   override def entities: ActorSystem[_] => Seq[PersistentEntity[_, _, _, _]] = sys =>
-    schedulerEntities(sys) ++ sessionEntities(sys) ++ accountEntities(
+    sessionEntities(sys) ++ accountEntities(
       sys
     )
 
@@ -41,7 +39,7 @@ trait AccountGuardian[
   /** initialize all event processor streams
     */
   override def eventProcessorStreams: ActorSystem[_] => Seq[EventProcessorStream[_]] = sys =>
-    schedulerEventProcessorStreams(sys) ++ accountEventProcessorStreams(sys)
+    accountEventProcessorStreams(sys)
 
   def accountDao: AccountDao
 

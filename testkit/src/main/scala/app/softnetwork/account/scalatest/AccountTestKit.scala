@@ -26,10 +26,19 @@ trait AccountTestKit[
   /** initialize all entities
     */
   override def entities: ActorSystem[_] => Seq[PersistentEntity[_, _, _, _]] = sys =>
-    super.entities(sys) ++ notificationEntities(sys)
+    sessionEntities(sys) ++ accountEntities(sys) ++ schedulerEntities(sys) ++ notificationEntities(
+      sys
+    )
 
   /** initialize all event processor streams
     */
   override def eventProcessorStreams: ActorSystem[_] => Seq[EventProcessorStream[_]] = sys =>
-    super.eventProcessorStreams(sys) ++ notificationEventProcessorStreams(sys)
+    accountEventProcessorStreams(sys) ++ schedulerEventProcessorStreams(
+      sys
+    ) ++ notificationEventProcessorStreams(sys)
+
+  override def initSystem: ActorSystem[_] => Unit = system => {
+    initAccountSystem(system)
+    initSchedulerSystem(system)
+  }
 }

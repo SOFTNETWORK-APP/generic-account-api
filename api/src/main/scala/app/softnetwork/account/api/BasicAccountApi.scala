@@ -7,13 +7,14 @@ import app.softnetwork.account.model.{BasicAccount, BasicAccountProfile}
 import app.softnetwork.account.persistence.query.AccountEventProcessorStreams.InternalAccountEvents2AccountProcessorStream
 import app.softnetwork.account.persistence.typed.{AccountBehavior, BasicAccountBehavior}
 import app.softnetwork.account.service.{AccountService, BasicAccountService}
+import app.softnetwork.persistence.jdbc.query.JdbcSchema.SchemaType
 import app.softnetwork.persistence.jdbc.query.{JdbcJournalProvider, JdbcSchema, JdbcSchemaProvider}
-import app.softnetwork.scheduler.api.SchedulerApi
 
 trait BasicAccountApi
-    extends SchedulerApi
-    with AccountApplication[BasicAccount, BasicAccountProfile]
+    extends AccountApplication[BasicAccount, BasicAccountProfile]
     with JdbcSchemaProvider {
+
+  def jdbcSchemaType: SchemaType = this.schemaType
 
   override def accountDao: AccountDao = BasicAccountDao
 

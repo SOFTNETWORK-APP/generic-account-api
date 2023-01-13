@@ -4,9 +4,9 @@ import akka.actor.typed.ActorSystem
 import akka.cluster.sharding.typed.scaladsl.EntityTypeKey
 import app.softnetwork.persistence.typed.scaladsl.EntityPattern
 import app.softnetwork.persistence.typed.CommandTypeKey
-import org.softnetwork.notification.model.NotificationType
+import app.softnetwork.notification.model.NotificationType
 import app.softnetwork.account.message._
-import app.softnetwork.account.persistence.typed.{BasicAccountBehavior, MockBasicAccountBehavior}
+import app.softnetwork.account.persistence.typed.BasicAccountBehavior
 
 import app.softnetwork.persistence._
 

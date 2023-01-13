@@ -2,9 +2,8 @@ package app.softnetwork.account
 
 import akka.http.scaladsl.server.directives.Credentials
 import app.softnetwork.persistence.message._
-import org.softnetwork.notification.model.NotificationType
+import app.softnetwork.notification.model.NotificationType
 import app.softnetwork.account.model._
-import org.softnetwork.notification.message.{NotificationCommandEvent, WrapNotificationCommandEvent}
 
 /** Created by smanciot on 17/04/2020.
   */
@@ -185,6 +184,9 @@ package object message {
 
   case object NewResetPasswordTokenSent extends AccountErrorMessage("NewResetPasswordTokenSent")
 
+  case object NewResetPasswordTokenNotSent
+      extends AccountErrorMessage("NewResetPasswordTokenNotSent")
+
   case object UndeliveredResetPasswordToken
       extends AccountErrorMessage("UndeliveredResetPasswordToken")
 
@@ -195,6 +197,8 @@ package object message {
   case object InvalidToken extends AccountErrorMessage("InvalidToken")
 
   case object AccountNotFound extends AccountErrorMessage("AccountNotFound")
+
+  case object AccountNotCreated extends AccountErrorMessage("AccountNotCreated")
 
   case object AccountAlreadyExists extends AccountErrorMessage("AccountAlreadyExists")
 
@@ -232,19 +236,8 @@ package object message {
   case object InternalAccountEventNotHandled
       extends AccountErrorMessage("InternalAccountEventNotHandled")
 
-  trait AccountToNotificationCommandEventDecorator extends WrapNotificationCommandEvent {
-    _: AccountToNotificationCommandEvent =>
-    override def event: NotificationCommandEvent =
-      wrapped match {
-        case _: AccountToNotificationCommandEvent.Wrapped.AddMail => getAddMail
-        case _: AccountToNotificationCommandEvent.Wrapped.AddSMS  => getAddSMS
-        case _: AccountToNotificationCommandEvent.Wrapped.AddPush => getAddPush
-        case _: AccountToNotificationCommandEvent.Wrapped.RemoveNotification =>
-          getRemoveNotification
-        case _ =>
-          new NotificationCommandEvent {
-            override def uuid: String = ""
-          }
-      }
-  }
+  case object VerificationCodeNotSent extends AccountErrorMessage("VerificationCodeNotSent")
+
+  case object ResetPasswordTokenNotSent extends AccountErrorMessage("ResetPasswordTokenNotSent")
+
 }

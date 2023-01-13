@@ -44,6 +44,11 @@ trait Account extends Principals with AccountDecorator with Timestamped {
   def anonymous: Option[Boolean]
 
   def fromAnonymous: Option[Boolean]
+
+  def notificationsEnabled: Boolean =
+    EmailValidator.check(
+      principal.value
+    ) || GsmValidator.check(principal.value)
 }
 
 trait AccountDetails extends Timestamped {

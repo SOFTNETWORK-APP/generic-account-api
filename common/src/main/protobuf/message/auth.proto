@@ -16,9 +16,10 @@ option (scalapb.options) = {
     import: "app.softnetwork.account.message._"
     import: "app.softnetwork.account.model._"
     import: "app.softnetwork.account.serialization._"
+    import: "app.softnetwork.notification.message._"
     import: "app.softnetwork.protobuf.ScalaPBTypeMappers._"
     import: "Protobuf._"
-    preamble: "trait AccountEvent extends Event"
+    preamble: "trait AccountEvent extends ExternalNotificationEvent"
     preamble: "trait InternalAccountEvent extends AccountEvent {def uuid: String}"
     preamble: "trait DeviceEvent extends AccountEvent"
     preamble: "trait AccountCreatedEvent[T <: Account] extends Created[T] with AccountEvent"
@@ -157,19 +158,7 @@ message AccountNotificationRecordedEvent {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "InternalAccountEvent";
     required string uuid = 1;
-    required org.softnetwork.notification.model.NotificationType channel = 2;
+    required app.softnetwork.notification.model.NotificationType channel = 2;
     required string subject = 3;
     required string content = 4;
-}
-
-message AccountToNotificationCommandEvent {
-    option (scalapb.message).extends = "ProtobufEvent";
-    option (scalapb.message).extends = "AccountEvent";
-    option (scalapb.message).extends = "AccountToNotificationCommandEventDecorator";
-    oneof wrapped {
-        org.softnetwork.notification.message.AddMailCommandEvent addMail = 1;
-        org.softnetwork.notification.message.AddSMSCommandEvent addSMS = 2;
-        org.softnetwork.notification.message.AddPushCommandEvent addPush = 3;
-        org.softnetwork.notification.message.RemoveNotificationCommandEvent removeNotification = 4;
-    }
 }
