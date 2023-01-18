@@ -28,6 +28,5 @@ organization := "app.softnetwork.account"
 name := "account-api"
 
 libraryDependencies ++= Seq(
-  "app.softnetwork.notification" %% "notification-api" % Versions.notification,
-  "app.softnetwork.persistence" %% "akka-persistence-jdbc" % Versions.genericPersistence
+  "app.softnetwork.notification" %% "notification-api" % Versions.notification
 )

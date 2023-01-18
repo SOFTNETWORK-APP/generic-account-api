@@ -4,7 +4,6 @@ import "scalapb/scalapb.proto";
 import "google/protobuf/timestamp.proto";
 import "model/notificationType.proto";
 import "model/auth.proto";
-import "message/notification.proto";
 
 package app.softnetwork.account.message;
 
