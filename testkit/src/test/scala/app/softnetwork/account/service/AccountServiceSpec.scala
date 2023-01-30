@@ -1,6 +1,8 @@
 package app.softnetwork.account.service
 
 import akka.actor.typed.ActorSystem
+import akka.http.scaladsl.model.HttpRequest
+import akka.http.scaladsl.unmarshalling.Unmarshaller
 import org.scalatest.wordspec.AnyWordSpecLike
 import app.softnetwork.persistence._
 import app.softnetwork.notification.model.Platform
@@ -16,6 +18,8 @@ class AccountServiceSpec
     extends MockBasicAccountService
     with AnyWordSpecLike
     with BasicAccountTestKit {
+
+  override def asSignUp: Unmarshaller[HttpRequest, SU] = as[BasicAccountSignUp]
 
   implicit lazy val system: ActorSystem[_] = typedSystem()
 
@@ -45,49 +49,49 @@ class AccountServiceSpec
 
   "SignUp" should {
     "fail if confirmed password does not match password" in {
-      run("PasswordsNotMatched", SignUp(username, pwd, Some("fake"))) await {
+      run("PasswordsNotMatched", BasicAccountSignUp(username, pwd, Some("fake"))) await {
         case PasswordsNotMatched => succeed
         case _                   => fail()
       }
     }
 
     "work with username" in {
-      run(usernameUuid, SignUp(username, pwd)) await {
+      run(usernameUuid, BasicAccountSignUp(username, pwd)) await {
         case r: AccountCreated => r.account.status shouldBe AccountStatus.Active
         case _                 => fail()
       }
     }
 
     "fail if username already exists" in {
-      run(usernameUuid, SignUp(username, pwd)) await {
+      run(usernameUuid, BasicAccountSignUp(username, pwd)) await {
         case AccountAlreadyExists => succeed
         case other                => fail(other.toString)
       }
     }
 
     "work with email" in {
-      run(emailUuid, SignUp(email, pwd)) await {
+      run(emailUuid, BasicAccountSignUp(email, pwd)) await {
         case r: AccountCreated => r.account.status shouldBe AccountStatus.Inactive
         case _                 => fail()
       }
     }
 
     "fail if email already exists" in {
-      run(emailUuid, SignUp(email, pwd)) await {
+      run(emailUuid, BasicAccountSignUp(email, pwd)) await {
         case AccountAlreadyExists => succeed
         case _                    => fail()
       }
     }
 
     "work with gsm" in {
-      run(gsmUuid, SignUp(gsm, pwd)) await {
+      run(gsmUuid, BasicAccountSignUp(gsm, pwd)) await {
         case r: AccountCreated => r.account.status shouldBe AccountStatus.Active
         case _                 => fail()
       }
     }
 
     "fail if gsm already exists" in {
-      run(gsmUuid, SignUp(gsm, pwd)) await {
+      run(gsmUuid, BasicAccountSignUp(gsm, pwd)) await {
         case AccountAlreadyExists => succeed
         case _                    => fail()
       }
@@ -336,7 +340,7 @@ class AccountServiceSpec
     "be registered" in {
       run(
         generateUUID(Some(computeEmail("DeviceRegistration"))),
-        SignUp(computeEmail("DeviceRegistration"), pwd)
+        BasicAccountSignUp(computeEmail("DeviceRegistration"), pwd)
       ) await {
         case r: AccountCreated =>
           r.account.status shouldBe AccountStatus.Inactive

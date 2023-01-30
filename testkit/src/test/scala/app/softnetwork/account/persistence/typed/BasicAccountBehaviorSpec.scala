@@ -18,7 +18,7 @@ class BasicAccountBehaviorSpec extends AnyWordSpecLike with BasicAccountTestKit 
     "fail if confirmed password does not match password" in {
       val probe = createTestProbe[AccountCommandResult]()
       val ref = entityRefFor(TypeKey, "PasswordsNotMatched")
-      ref ! CommandWrapper(SignUp(username, password, Some("fake")), probe.ref)
+      ref ! CommandWrapper(BasicAccountSignUp(username, password, Some("fake")), probe.ref)
       probe.expectMessage(PasswordsNotMatched)
     }
   }

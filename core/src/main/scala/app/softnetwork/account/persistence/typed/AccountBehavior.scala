@@ -218,7 +218,13 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
           case Some(_) =>
             Effect.none.thenRun(_ => AccountAlreadyExists ~> replyTo)
           case _ =>
-            createAccount(entityId, SignUp(entityId, AnonymousPassword)) match {
+            createAccount(
+              entityId,
+              new SignUp {
+                override def login: String = entityId
+                override def password: String = AnonymousPassword
+              }
+            ) match {
               case Some(account) =>
                 import account._
                 if (

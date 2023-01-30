@@ -48,7 +48,7 @@ trait Account extends Principals with AccountDecorator with Timestamped {
   def notificationsEnabled: Boolean =
     EmailValidator.check(
       principal.value
-    ) || GsmValidator.check(principal.value)
+    ) || GsmValidator.check(principal.value) || registrations.nonEmpty
 }
 
 trait AccountDetails extends Timestamped {
@@ -187,6 +187,15 @@ trait Profiles { self: Account =>
           )
       case _ =>
         profile
+          .withUuid(
+            self.uuid
+          )
+          .withCreatedDate(
+            now()
+          )
+          .withLastUpdated(
+            now()
+          )
           .withEmail(
             profile.email.getOrElse(self.email.orNull)
           )

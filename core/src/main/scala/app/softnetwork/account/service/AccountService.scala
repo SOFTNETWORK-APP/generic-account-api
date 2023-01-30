@@ -1,9 +1,10 @@
 package app.softnetwork.account.service
 
 import akka.actor.typed.ActorSystem
-import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.{Directives, Route}
 import akka.http.scaladsl.server.directives.Credentials
+import akka.http.scaladsl.unmarshalling.Unmarshaller
 import app.softnetwork.persistence.service.Service
 import com.softwaremill.session.CsrfDirectives._
 import com.softwaremill.session.CsrfOptions._
@@ -22,6 +23,7 @@ import app.softnetwork.session.service.SessionService
 import org.json4s.jackson.Serialization
 import org.json4s.{jackson, Formats}
 
+import scala.language.implicitConversions
 import scala.util.{Failure, Success}
 
 import Session._
@@ -38,6 +40,12 @@ trait AccountService
     with DefaultComplete
     with Json4sSupport
     with StrictLogging { _: CommandTypeKey[AccountCommand] =>
+
+  type SU
+
+  def asSignUp: Unmarshaller[HttpRequest, SU]
+
+  implicit def toSignUp: SU => SignUp
 
   implicit def formats: Formats = accountFormats
 
@@ -93,7 +101,7 @@ trait AccountService
 
   lazy val signUp: Route = path("signUp") {
     post {
-      entity(as[SignUp]) { signUp =>
+      entity(asSignUp) { signUp =>
         _optionalSession(ec) { maybeSession =>
           val uuid = maybeSession match {
             case Some(session) if session.anonymous && session.id.nonEmpty => session.id
@@ -101,9 +109,7 @@ trait AccountService
           }
           // execute signUp
           run(
-            uuid
-            /** #MOSA-454*
-              */,
+            uuid,
             signUp
           ) completeWith {
             case r: AccountCreated =>
@@ -438,7 +444,13 @@ trait AccountService
   }
 }
 
-trait BasicAccountService extends AccountService with BasicAccountTypeKey
+trait BasicAccountService extends AccountService with BasicAccountTypeKey {
+  override type SU = BasicAccountSignUp
+
+  override implicit def toSignUp: SU => SignUp = identity
+
+  override def asSignUp: Unmarshaller[HttpRequest, SU] = as[BasicAccountSignUp]
+}
 
 object BasicAccountService {
   def apply(asystem: ActorSystem[_]): BasicAccountService = {

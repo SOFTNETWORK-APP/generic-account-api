@@ -7,7 +7,7 @@ import app.softnetwork.serialization._
 import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.handlers.{AccountKeyDao, MockGenerator}
 import app.softnetwork.account.message._
-import app.softnetwork.account.model.{AccountStatus, AccountView}
+import app.softnetwork.account.model.{AccountStatus, AccountView, BasicAccountProfile, ProfileType}
 import app.softnetwork.api.server.config.ServerSettings._
 import app.softnetwork.account.scalatest.BasicAccountRouteTestKit
 
@@ -28,6 +28,11 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
   private val gsm = "33660010203"
 
   private val password = "Changeit1"
+
+  private val profile =
+    BasicAccountProfile.defaultInstance
+      .withName("name")
+      .withType(ProfileType.CUSTOMER)
 
   "MainRoutes" should {
     "contain a healthcheck path" in {
@@ -54,7 +59,7 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
       withCookies(
         Post(
           s"/$RootPath/${AccountSettings.Path}/signUp",
-          SignUp(anonymous, password, None, firstName, lastName)
+          BasicAccountSignUp(anonymous, password, profile = Some(profile))
         )
       ) ~> mainRoutes(typedSystem()) ~> check {
         status shouldEqual StatusCodes.Created
@@ -67,7 +72,7 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
     "fail if confirmed password does not match password" in {
       Post(
         s"/$RootPath/${AccountSettings.Path}/signUp",
-        SignUp(username, password, Some("fake"))
+        BasicAccountSignUp(username, password, Some("fake"))
       ) ~> mainRoutes(typedSystem()) ~> check {
         status shouldEqual StatusCodes.BadRequest
         responseAs[AccountErrorMessage].message shouldBe PasswordsNotMatched.message
@@ -76,14 +81,17 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
     "work with username" in {
       Post(
         s"/$RootPath/${AccountSettings.Path}/signUp",
-        SignUp(username, password, None, firstName, lastName)
+        BasicAccountSignUp(username, password, profile = Some(profile))
       ) ~> mainRoutes(typedSystem()) ~> check {
         status shouldEqual StatusCodes.Created
         responseAs[AccountView].status shouldBe AccountStatus.Active
       }
     }
     "fail if username already exists" in {
-      Post(s"/$RootPath/${AccountSettings.Path}/signUp", SignUp(username, password)) ~> mainRoutes(
+      Post(
+        s"/$RootPath/${AccountSettings.Path}/signUp",
+        BasicAccountSignUp(username, password)
+      ) ~> mainRoutes(
         typedSystem()
       ) ~> check {
         status shouldEqual StatusCodes.BadRequest
@@ -93,7 +101,7 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
     "work with email" in {
       Post(
         s"/$RootPath/${AccountSettings.Path}/signUp",
-        SignUp(email, password, None, firstName, lastName)
+        BasicAccountSignUp(email, password, profile = Some(profile.withEmail(email)))
       ) ~> mainRoutes(typedSystem()) ~> check {
         status shouldEqual StatusCodes.Created
         val account = responseAs[AccountView]
@@ -105,7 +113,10 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
       }
     }
     "fail if email already exists" in {
-      Post(s"/$RootPath/${AccountSettings.Path}/signUp", SignUp(email, password)) ~> mainRoutes(
+      Post(
+        s"/$RootPath/${AccountSettings.Path}/signUp",
+        BasicAccountSignUp(email, password)
+      ) ~> mainRoutes(
         typedSystem()
       ) ~> check {
         status shouldEqual StatusCodes.BadRequest
@@ -115,14 +126,17 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
     "work with gsm" in {
       Post(
         s"/$RootPath/${AccountSettings.Path}/signUp",
-        SignUp(gsm, password, None, firstName, lastName)
+        BasicAccountSignUp(gsm, password, profile = Some(profile.withPhoneNumber(gsm)))
       ) ~> mainRoutes(typedSystem()) ~> check {
         status shouldEqual StatusCodes.Created
         responseAs[AccountView].status shouldBe AccountStatus.Active
       }
     }
     "fail if gsm already exists" in {
-      Post(s"/$RootPath/${AccountSettings.Path}/signUp", SignUp(gsm, password)) ~> mainRoutes(
+      Post(
+        s"/$RootPath/${AccountSettings.Path}/signUp",
+        BasicAccountSignUp(gsm, password)
+      ) ~> mainRoutes(
         typedSystem()
       ) ~> check {
         status shouldEqual StatusCodes.BadRequest

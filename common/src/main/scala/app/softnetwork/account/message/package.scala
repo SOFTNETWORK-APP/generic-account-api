@@ -14,15 +14,19 @@ package object message {
   /*sealed */
   trait AccountCommand extends Command
 
-  @SerialVersionUID(0L)
-  case class SignUp(
+  trait SignUp extends AccountCommand {
+    def login: String
+    def password: String
+    def confirmPassword: Option[String] = None
+    def profile: Option[Profile] = None
+  }
+
+  case class BasicAccountSignUp(
     login: String,
     password: String,
-    confirmPassword: Option[String] = None,
-    firstName: Option[String] = None,
-    lastName: Option[String] = None,
-    userName: Option[String] = None
-  ) extends AccountCommand
+    override val confirmPassword: Option[String] = None,
+    override val profile: Option[BasicAccountProfile] = None
+  ) extends SignUp
 
   case object SignUpAnonymous extends AccountCommand
 
@@ -102,7 +106,7 @@ package object message {
       extends AccountCommand
 
   @SerialVersionUID(0L)
-  class InitAdminAccount(login: String, password: String) extends SignUp(login, password)
+  case class InitAdminAccount(login: String, password: String) extends SignUp
 
   case class RecordNotification(
     uuids: Set[String],

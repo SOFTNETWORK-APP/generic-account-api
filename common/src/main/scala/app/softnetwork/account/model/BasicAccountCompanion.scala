@@ -49,24 +49,43 @@ trait BasicAccountCompanion {
           .withCredentials(encrypt(password))
           .withStatus(status)
           .add(principal)
-      val account =
-        userName match {
-          case Some(s) => basicAccount.add(Principal(s))
-          case _       => basicAccount
-        }
       if (admin) {
         Some(
-          account
+          basicAccount
             .add(
               BasicAccountProfile.defaultInstance
                 .withName("admin")
                 .withType(ProfileType.ADMINISTRATOR)
-                .withFirstName(firstName.getOrElse("admin"))
-                .withLastName(lastName.getOrElse(""))
+                .withFirstName(profile.map(_.firstName).getOrElse("admin"))
+                .withLastName(profile.map(_.lastName).getOrElse(""))
             )
             .asInstanceOf[BasicAccount]
         )
       } else {
+        val account =
+          profile match {
+            case Some(p) =>
+              val basicProfile =
+                basicAccount
+                  .completeProfile(
+                    BasicAccountProfile.defaultInstance.copy(
+                      name = p.name,
+                      `type` = p.`type`,
+                      description = p.description,
+                      firstName = p.firstName,
+                      lastName = p.lastName,
+                      phoneNumber = p.phoneNumber,
+                      email = p.email,
+                      userName = p.userName
+                    )
+                  )
+                  .asInstanceOf[BasicAccountProfile]
+              p.userName match {
+                case Some(value) => basicAccount.add(Principal(value)).add(basicProfile)
+                case _           => basicAccount.add(basicProfile)
+              }
+            case _ => basicAccount
+          }
         Some(
           account.asInstanceOf[BasicAccount]
         )
@@ -74,9 +93,4 @@ trait BasicAccountCompanion {
     }
   }
 
-}
-
-trait BasicAccountDecorator { _: BasicAccount =>
-  override def newProfile(name: String): Profile =
-    BasicAccountProfile.defaultInstance.withName(name)
 }

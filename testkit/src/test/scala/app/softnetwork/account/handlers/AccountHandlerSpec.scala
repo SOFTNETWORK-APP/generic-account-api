@@ -78,7 +78,7 @@ class AccountHandlerSpec
 
   "SignUp" should {
     "fail with wrong password" in {
-      this ?? (usernameUuid, SignUp(username, wrongPassword, None)) await {
+      this ?? (usernameUuid, BasicAccountSignUp(username, wrongPassword, None)) await {
         case r: InvalidPassword =>
           assert(r.errors.contains("UPPER_CASE_CHARACTER"))
           assert(r.errors.contains("NUMBER_CHARACTER"))
@@ -88,14 +88,14 @@ class AccountHandlerSpec
     }
 
     "fail if confirmed password does not match password" in {
-      this ?? (usernameUuid, SignUp(username, password, Some("fake"))) await {
+      this ?? (usernameUuid, BasicAccountSignUp(username, password, Some("fake"))) await {
         case PasswordsNotMatched => succeed
         case _                   => fail()
       }
     }
 
     "work with username" in {
-      this ?? (usernameUuid, SignUp(username, password)) await {
+      this ?? (usernameUuid, BasicAccountSignUp(username, password)) await {
         case r: AccountCreated =>
           import r._
           account.status shouldBe AccountStatus.Active
@@ -107,21 +107,21 @@ class AccountHandlerSpec
     }
 
     "fail if account already exists" in {
-      this ?? (usernameUuid, SignUp(username, password)) await {
+      this ?? (usernameUuid, BasicAccountSignUp(username, password)) await {
         case AccountAlreadyExists => succeed
         case _                    => fail()
       }
     }
 
     "fail if username already exists" in {
-      this ?? (usernameUuid2, SignUp(username, password)) await {
+      this ?? (usernameUuid2, BasicAccountSignUp(username, password)) await {
         case LoginAlreadyExists => succeed
         case _                  => fail()
       }
     }
 
     "work with email" in {
-      this ?? (emailUuid, SignUp(email, password)) await {
+      this ?? (emailUuid, BasicAccountSignUp(email, password)) await {
         case r: AccountCreated =>
           import r._
           account.status shouldBe AccountStatus.Inactive
@@ -133,14 +133,14 @@ class AccountHandlerSpec
     }
 
     "fail if email already exists" in {
-      this ?? (emailUuid2, SignUp(email, password)) await {
+      this ?? (emailUuid2, BasicAccountSignUp(email, password)) await {
         case LoginAlreadyExists => succeed
         case _                  => fail()
       }
     }
 
     "work with gsm" in {
-      this ?? (gsmUuid, SignUp(gsm, password)) await {
+      this ?? (gsmUuid, BasicAccountSignUp(gsm, password)) await {
         case r: AccountCreated =>
           import r._
           account.status shouldBe AccountStatus.Active
@@ -152,14 +152,14 @@ class AccountHandlerSpec
     }
 
     "fail if gsm already exists" in {
-      this ?? (gsmUuid2, SignUp(gsm, password)) await {
+      this ?? (gsmUuid2, BasicAccountSignUp(gsm, password)) await {
         case LoginAlreadyExists => succeed
         case _                  => fail()
       }
     }
 
     "work with anonymous account" in {
-      this ?? (anonymousUuid, SignUp(anonymous, password)) await {
+      this ?? (anonymousUuid, BasicAccountSignUp(anonymous, password)) await {
         case r: AccountCreated =>
           import r._
           account.anonymous.getOrElse(true) shouldBe false
@@ -382,7 +382,7 @@ class AccountHandlerSpec
 
   "Unsubscribe" should {
     "work" in {
-      this ?? (generateUUID(Some(computeEmail("Unsubscribe"))), SignUp(
+      this ?? (generateUUID(Some(computeEmail("Unsubscribe"))), BasicAccountSignUp(
         computeEmail("Unsubscribe"),
         password
       )) await {
@@ -517,7 +517,7 @@ class AccountHandlerSpec
                   import r._
                   account.email.getOrElse("") shouldBe newLogin
                   // #MOSA-454
-                  this ?? (emailUuid2, SignUp(oldLogin, password)) await {
+                  this ?? (emailUuid2, BasicAccountSignUp(oldLogin, password)) await {
                     case r: AccountCreated =>
                       import r._
                       account.status shouldBe AccountStatus.Inactive
