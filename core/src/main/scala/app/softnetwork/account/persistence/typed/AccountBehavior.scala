@@ -756,29 +756,28 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
           val nbLoginFailures = account.nbLoginFailures + 1
           val disabled = nbLoginFailures > maxLoginFailures // disable account
           val notifications: Seq[ExternalEntityToNotificationEvent] =
-            if(disabled && !account.status.isDisabled){
+            if (disabled && !account.status.isDisabled) {
               sendAccountDisabled(generateUUID(), account)
-            }
-            else{
+            } else {
               Seq.empty
             }
           Effect
             .persist[ExternalNotificationEvent, Option[T]](
               (if (disabled)
-                List(
-                  AccountDisabledEvent(
-                    entityId,
-                    nbLoginFailures
-                  ).withLastUpdated(now())
-                )
-              else {
-                List(
-                  LoginFailed(
-                    entityId,
-                    nbLoginFailures
-                  ).withLastUpdated(now())
-                )
-              }) ++ notifications.toList
+                 List(
+                   AccountDisabledEvent(
+                     entityId,
+                     nbLoginFailures
+                   ).withLastUpdated(now())
+                 )
+               else {
+                 List(
+                   LoginFailed(
+                     entityId,
+                     nbLoginFailures
+                   ).withLastUpdated(now())
+                 )
+               }) ++ notifications.toList
             )
             .thenRun(_ =>
               {
@@ -798,7 +797,9 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
         }
       case Some(account) if account.status.isDisabled =>
         log.info(s"reset password required for ${account.primaryPrincipal.value}")
-        Effect.persist(sendAccountDisabled(generateUUID(), account).toList).thenRun(_ => AccountDisabled ~> replyTo)
+        Effect
+          .persist(sendAccountDisabled(generateUUID(), account).toList)
+          .thenRun(_ => AccountDisabled ~> replyTo)
       case None => Effect.none.thenRun(_ => LoginAndPasswordNotMatched ~> replyTo) //WrongLogin
       case _    => Effect.none.thenRun(_ => IllegalStateError ~> replyTo)
     }
@@ -850,7 +851,12 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
       case _: AccountDestroyedEvent =>
         state match {
           case Some(account) =>
+            account.verificationCode.foreach(v => accountKeyDao.removeAccountKey(v.code))
+            account.verificationToken.foreach(v => accountKeyDao.removeAccountKey(v.token))
             account.principals.foreach(principal => accountKeyDao.removeAccountKey(principal.value))
+            account.secondaryPrincipals.foreach(principal =>
+              accountKeyDao.removeAccountKey(principal.value)
+            )
           case _ =>
         }
         emptyState
