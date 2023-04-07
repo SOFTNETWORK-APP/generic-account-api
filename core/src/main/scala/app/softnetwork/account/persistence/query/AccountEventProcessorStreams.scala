@@ -7,6 +7,8 @@ import app.softnetwork.persistence.query.{EventProcessorStream, JournalProvider}
 import app.softnetwork.persistence.typed.CommandTypeKey
 import app.softnetwork.account.handlers.AccountHandler
 import app.softnetwork.account.message._
+import app.softnetwork.scheduler.model.Schedule
+import app.softnetwork.scheduler.persistence.query.Scheduler2EntityProcessorStream
 
 import scala.concurrent.Future
 
@@ -50,4 +52,20 @@ object AccountEventProcessorStreams {
     }
   }
 
+  trait Scheduler2AccountProcessorStream
+      extends Scheduler2EntityProcessorStream[AccountCommand, AccountCommandResult]
+      with AccountHandler {
+    _: JournalProvider with CommandTypeKey[AccountCommand] =>
+
+    override protected def triggerSchedule(schedule: Schedule): Future[Boolean] = {
+      !?(TriggerSchedule4Account(schedule)) map {
+        case result: Schedule4AccountTriggered =>
+          if (forTests) {
+            system.eventStream.tell(Publish(result))
+          }
+          true
+        case _ => false
+      }
+    }
+  }
 }

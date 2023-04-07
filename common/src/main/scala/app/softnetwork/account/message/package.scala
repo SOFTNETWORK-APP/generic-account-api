@@ -4,6 +4,7 @@ import akka.http.scaladsl.server.directives.Credentials
 import app.softnetwork.persistence.message._
 import app.softnetwork.notification.model.NotificationType
 import app.softnetwork.account.model._
+import app.softnetwork.scheduler.model.Schedule
 
 /** Created by smanciot on 17/04/2020.
   */
@@ -117,6 +118,10 @@ package object message {
 
   case class WrapInternalAccountEvent(event: InternalAccountEvent) extends AccountCommand
 
+  case class TriggerSchedule4Account(schedule: Schedule) extends AccountCommand with EntityCommand {
+    override val id: String = schedule.entityId
+  }
+
   /** Created by smanciot on 19/03/2018.
     */
   trait AccountCommandResult extends CommandResult
@@ -166,6 +171,8 @@ package object message {
   case object LoginUpdated extends AccountCommandResult
 
   case object NotificationRecorded extends AccountCommandResult
+
+  case class Schedule4AccountTriggered(schedule: Schedule) extends AccountCommandResult
 
   /** Created by smanciot on 19/03/2018.
     */
@@ -243,5 +250,7 @@ package object message {
   case object VerificationCodeNotSent extends AccountErrorMessage("VerificationCodeNotSent")
 
   case object ResetPasswordTokenNotSent extends AccountErrorMessage("ResetPasswordTokenNotSent")
+
+  case object Schedule4AccountNotTriggered extends AccountErrorMessage("Schedule4AccountNotTriggered")
 
 }

@@ -4,7 +4,10 @@ import akka.actor.typed.ActorSystem
 import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.handlers.AccountDao
 import app.softnetwork.account.model.{Account, AccountDecorator, Profile, ProfileDecorator}
-import app.softnetwork.account.persistence.query.AccountEventProcessorStreams.InternalAccountEvents2AccountProcessorStream
+import app.softnetwork.account.persistence.query.AccountEventProcessorStreams.{
+  InternalAccountEvents2AccountProcessorStream,
+  Scheduler2AccountProcessorStream
+}
 import app.softnetwork.account.persistence.typed.AccountBehavior
 import app.softnetwork.persistence.launch.PersistentEntity
 import app.softnetwork.persistence.query.{EventProcessorStream, SchemaProvider}
@@ -33,8 +36,13 @@ trait AccountGuardian[
   def internalAccountEvents2AccountProcessorStream
     : ActorSystem[_] => InternalAccountEvents2AccountProcessorStream
 
+  def scheduler2AccountProcessorStream: ActorSystem[_] => Option[Scheduler2AccountProcessorStream] =
+    _ => None
+
   def accountEventProcessorStreams: ActorSystem[_] => Seq[EventProcessorStream[_]] = sys =>
-    Seq(internalAccountEvents2AccountProcessorStream(sys))
+    Seq(internalAccountEvents2AccountProcessorStream(sys)) ++ Seq(
+      scheduler2AccountProcessorStream(sys)
+    ).flatten
 
   /** initialize all event processor streams
     */
