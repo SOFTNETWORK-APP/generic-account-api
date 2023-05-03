@@ -11,6 +11,7 @@ import app.softnetwork.account.config.AccountSettings._
 import app.softnetwork.account.handlers._
 import app.softnetwork.account.message._
 import Sha512Encryption._
+import akka.cluster.sharding.typed.ShardingEnvelope
 import app.softnetwork.notification.api.NotificationClient
 import app.softnetwork.notification.config.NotificationSettings
 import app.softnetwork.account.model._
@@ -24,6 +25,7 @@ import app.softnetwork.notification.message.{
 import app.softnetwork.scheduler.message.SchedulerEvents.ExternalSchedulerEvent
 import app.softnetwork.scheduler.model.Schedule
 
+import java.time.Instant
 import scala.concurrent.ExecutionContextExecutor
 import scala.language.{implicitConversions, postfixOps}
 import scala.reflect.ClassTag
@@ -78,7 +80,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
 
   override def init(system: ActorSystem[_], maybeRole: Option[String] = None)(implicit
     tTag: ClassTag[AccountCommand]
-  ): Unit = {
+  ): ActorRef[ShardingEnvelope[AccountCommand]] = {
     AccountKeyBehavior.init(system, maybeRole)
     notificationClient = NotificationClient(system)
     super.init(system, maybeRole)
@@ -275,7 +277,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                 } else {
                   Effect
                     .persist(
-                      AccountActivatedEvent(entityId).withLastUpdated(now())
+                      AccountActivatedEvent(entityId).withLastUpdated(Instant.now())
                     )
                     .thenRun(state => AccountActivated(state.getOrElse(account)) ~> replyTo)
                 }
@@ -325,7 +327,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                     VerificationCodeAdded(
                       entityId,
                       verificationCode
-                    ).withLastUpdated(now())
+                    ).withLastUpdated(Instant.now())
                   ) ++ notifications.toList
                 )
                 .thenRun(_ => VerificationCodeSent ~> replyTo)
@@ -353,7 +355,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                     VerificationTokenAdded(
                       entityId,
                       verificationToken
-                    ).withLastUpdated(now())
+                    ).withLastUpdated(Instant.now())
                   ) ++ notifications.toList
                 )
                 .thenRun(_ => ResetPasswordTokenSent ~> replyTo)
@@ -386,7 +388,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                           VerificationTokenAdded(
                             entityId,
                             verificationToken
-                          ).withLastUpdated(now())
+                          ).withLastUpdated(Instant.now())
                         ) ++ notifications.toList
                       )
                       .thenRun(_ => NewResetPasswordTokenSent ~> replyTo)
@@ -427,7 +429,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                                 encrypt(newPassword),
                                 None,
                                 account.verificationToken
-                              ).withLastUpdated(now())
+                              ).withLastUpdated(Instant.now())
                             )
                             .thenRun(_ =>
                               {
@@ -451,7 +453,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                                 encrypt(newPassword),
                                 account.verificationCode,
                                 None
-                              ).withLastUpdated(now())
+                              ).withLastUpdated(Instant.now())
                             )
                             .thenRun(_ =>
                               {
@@ -493,7 +495,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                             encrypt(newPassword),
                             account.verificationCode,
                             account.verificationToken
-                          ).withLastUpdated(now())
+                          ).withLastUpdated(Instant.now())
                         ) ++ notifications.toList
                       )
                       .thenRun(state => PasswordUpdated(state.get) ~> replyTo)
@@ -516,7 +518,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                 DeviceRegisteredEvent(
                   entityId,
                   registration
-                ).withLastUpdated(now())
+                ).withLastUpdated(Instant.now())
               )
               .thenRun(_ => DeviceRegistered ~> replyTo)
           case _ => Effect.none.thenRun(_ => AccountNotFound ~> replyTo)
@@ -535,7 +537,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                     DeviceUnregisteredEvent(
                       entityId,
                       r
-                    ).withLastUpdated(now())
+                    ).withLastUpdated(Instant.now())
                   )
                   .thenRun(_ => DeviceUnregistered ~> replyTo)
               case _ => Effect.none.thenRun(_ => DeviceRegistrationNotFound ~> replyTo)
@@ -550,7 +552,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
             Effect
               .persist(
                 accountUnsubscribed(entityId, state) :+ AccountDeletedEvent(entityId)
-                  .withLastUpdated(now())
+                  .withLastUpdated(Instant.now())
               )
               .thenRun(state => AccountDeleted(state.get) ~> replyTo)
           case _ => Effect.none.thenRun(_ => AccountNotFound ~> replyTo)
@@ -562,7 +564,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
             Effect
               .persist(
                 accountDestroyed(entityId, state) :+ AccountDestroyedEvent(entityId)
-                  .withLastUpdated(now())
+                  .withLastUpdated(Instant.now())
               )
               .thenRun(_ => AccountDestroyed(entityId) ~> replyTo)
           case _ => Effect.none.thenRun(_ => AccountNotFound ~> replyTo)
@@ -570,7 +572,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
 
       case _: Logout.type =>
         Effect
-          .persist(logoutSucceeded(entityId, state) :+ LogoutEvent(entityId, now()))
+          .persist(logoutSucceeded(entityId, state) :+ LogoutEvent(entityId, Instant.now()))
           .thenRun(_ => LogoutSucceeded ~> replyTo)
 
       case cmd: UpdateLogin =>
@@ -601,7 +603,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                     LoginUpdatedEvent(
                       uuid = entityId,
                       principal = principal
-                    ).withLastUpdated(now())
+                    ).withLastUpdated(Instant.now())
                   ) ++
                   account.profiles.map(kv =>
                     createProfileUpdatedEvent(
@@ -624,13 +626,13 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
             val email = profile.email.getOrElse("").trim
             if (
               VerificationGsmEnabled &&
-              phoneNumber.length > 0 &&
+              phoneNumber.nonEmpty &&
               lookupAccount(phoneNumber).getOrElse(entityId) != entityId
             ) {
               Effect.none.thenRun(_ => GsmAlreadyExists ~> replyTo)
             } else if (
               VerificationEmailEnabled &&
-              email.length > 0 &&
+              email.nonEmpty &&
               lookupAccount(email).getOrElse(entityId) != entityId
             ) {
               Effect.none.thenRun(_ => EmailAlreadyExists ~> replyTo)
@@ -661,7 +663,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                 ProfileSwitchedEvent(
                   entityId,
                   name
-                ).withLastUpdated(now())
+                ).withLastUpdated(Instant.now())
               )
               .thenRun(_ =>
                 {
@@ -832,7 +834,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
               loginSucceeded(entityId, state) :+
               LoginSucceeded(
                 entityId,
-                now(),
+                Instant.now(),
                 anonymous
               )
             )
@@ -855,14 +857,14 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                    AccountDisabledEvent(
                      entityId,
                      nbLoginFailures
-                   ).withLastUpdated(now())
+                   ).withLastUpdated(Instant.now())
                  )
                else {
                  List(
                    LoginFailed(
                      entityId,
                      nbLoginFailures
-                   ).withLastUpdated(now())
+                   ).withLastUpdated(Instant.now())
                  )
                }) ++ notifications.toList
             )

@@ -1,14 +1,14 @@
 package app.softnetwork.account.model
 
-import java.util.Date
 import app.softnetwork.persistence.model.Timestamped
 import app.softnetwork.serialization._
-import app.softnetwork.persistence._
 import app.softnetwork.validation.{EmailValidator, GsmValidator}
+
+import java.time.Instant
 
 trait Account extends Principals with AccountDecorator with Timestamped {
   def credentials: String
-  def lastLogin: Option[Date]
+  def lastLogin: Option[Instant]
   def nbLoginFailures: Int
   def status: AccountStatus
 
@@ -61,10 +61,10 @@ trait AccountDetails extends Timestamped {
 
 @SerialVersionUID(0L)
 class AccountView(
-  val lastLogin: Option[Date],
+  val lastLogin: Option[Instant],
   val status: AccountStatus,
-  val createdDate: Date,
-  val lastUpdated: Date,
+  val createdDate: Instant,
+  val lastUpdated: Instant,
   val currentProfile: Option[Profile],
   val details: Option[AccountDetails],
   val anonymous: Option[Boolean],
@@ -165,10 +165,10 @@ trait Profiles { self: Account =>
             self.uuid
           )
           .withCreatedDate(
-            now()
+            Instant.now()
           )
           .withLastUpdated(
-            now()
+            Instant.now()
           )
           .withFirstName(
             profile.firstName.getOrElse(firstName.getOrElse(""))
@@ -191,10 +191,10 @@ trait Profiles { self: Account =>
             self.uuid
           )
           .withCreatedDate(
-            now()
+            Instant.now()
           )
           .withLastUpdated(
-            now()
+            Instant.now()
           )
           .withEmail(
             profile.email.getOrElse(self.email.orNull)
@@ -259,8 +259,8 @@ trait Profile extends AccountDetails with ProfileDecorator {
 @SerialVersionUID(0L)
 class ProfileView(
   val uuid: String,
-  val createdDate: Date,
-  val lastUpdated: Date,
+  val createdDate: Instant,
+  val lastUpdated: Instant,
   val firstName: String,
   val lastName: String,
   val phoneNumber: Option[String],
@@ -274,27 +274,27 @@ class ProfileView(
 trait AccountDecorator { account: Account =>
   def withPrincipal(principal: Principal): Account
   def withCredentials(credentials: String): Account
-  def withLastLogin(lastLogin: Date): Account
-  def withLastLogout(lastLogout: Date): Account
+  def withLastLogin(lastLogin: Instant): Account
+  def withLastLogout(lastLogout: Instant): Account
   def withNbLoginFailures(nbLoginFailures: Int): Account
   def withStatus(status: AccountStatus): Account
   def withVerificationToken(verificationToken: VerificationToken): Account
   def withVerificationCode(verificationCode: VerificationCode): Account
-  def withLastUpdated(lastUpdated: Date): Account
+  def withLastUpdated(lastUpdated: Instant): Account
   def withDetails(details: AccountDetails): Account
   def withRegistrations(registrations: Seq[DeviceRegistration]): Account
   def withAnonymous(anonymous: Boolean): Account
   def withFromAnonymous(fromAnonymous: Boolean): Account
 
   def copyWithCredentials(credentials: String): Account = withCredentials(credentials)
-  def copyWithLastLogin(lastLogin: Option[Date]): Account = withLastLogin(lastLogin.orNull)
+  def copyWithLastLogin(lastLogin: Option[Instant]): Account = withLastLogin(lastLogin.orNull)
   def copyWithNbLoginFailures(nbLoginFailures: Int): Account = withNbLoginFailures(nbLoginFailures)
   def copyWithStatus(status: AccountStatus): Account = withStatus(status)
   def copyWithVerificationToken(verificationToken: Option[VerificationToken]): Account =
     withVerificationToken(verificationToken.orNull)
   def copyWithVerificationCode(verificationCode: Option[VerificationCode]): Account =
     withVerificationCode(verificationCode.orNull)
-  def copyWithLastUpdated(maybeLastUpdated: Option[Date]): Account =
+  def copyWithLastUpdated(maybeLastUpdated: Option[Instant]): Account =
     maybeLastUpdated match {
       case Some(lastUpdated) => withLastUpdated(lastUpdated)
       case _                 => account
@@ -338,8 +338,8 @@ trait AccountDecorator { account: Account =>
 
 trait ProfileDecorator { profile: Profile =>
   def withUuid(uuid: String): Profile
-  def withCreatedDate(createdDate: Date): Profile
-  def withLastUpdated(lastUpdated: Date): Profile
+  def withCreatedDate(createdDate: Instant): Profile
+  def withLastUpdated(lastUpdated: Instant): Profile
   def withName(name: String): Profile
   def withType(`type`: ProfileType): Profile
   def withFirstName(firstName: String): Profile

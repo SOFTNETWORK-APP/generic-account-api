@@ -34,7 +34,7 @@ message VerificationToken {
     option (scalapb.message).extends = "VerificationExpirationDate";
     option (scalapb.message).companion_extends = "VerificationTokenCompanion";
     required string token = 1;
-    required google.protobuf.Timestamp expirationDate = 2 [(scalapb.field).type = "java.util.Date"];
+    required google.protobuf.Timestamp expirationDate = 2 [(scalapb.field).type = "java.time.Instant"];
 }
 
 message VerificationCode {
@@ -42,7 +42,7 @@ message VerificationCode {
     option (scalapb.message).extends = "VerificationExpirationDate";
     option (scalapb.message).companion_extends = "VerificationCodeCompanion";
     required string code = 1;
-    required google.protobuf.Timestamp expirationDate = 2 [(scalapb.field).type = "java.util.Date"];
+    required google.protobuf.Timestamp expirationDate = 2 [(scalapb.field).type = "java.time.Instant"];
 }
 
 message DeviceRegistration {
@@ -61,8 +61,8 @@ message BasicAccountProfile {
     option (scalapb.message).extends = "AccountDetails";
     option (scalapb.message).extends = "Timestamped";
     required string uuid = 1;
-    required google.protobuf.Timestamp createdDate = 2 [(scalapb.field).type = "java.util.Date"];
-    required google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.util.Date"];
+    required google.protobuf.Timestamp createdDate = 2 [(scalapb.field).type = "java.time.Instant"];
+    required google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.time.Instant"];
     required string name = 4;
     required ProfileType type = 5;
     required string firstName = 6 [default = ""];
@@ -79,8 +79,8 @@ message BasicAccountDetails {
     option (scalapb.message).extends = "AccountDetails";
     option (scalapb.message).extends = "Timestamped";
     required string uuid = 1;
-    required google.protobuf.Timestamp createdDate = 2 [(scalapb.field).type = "java.util.Date"];
-    required google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.util.Date"];
+    required google.protobuf.Timestamp createdDate = 2 [(scalapb.field).type = "java.time.Instant"];
+    required google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.time.Instant"];
     required string firstName = 4 [default = ""];
     required string lastName = 5 [default = ""];
     optional string phoneNumber = 6;
@@ -96,22 +96,22 @@ message BasicAccount {
     option (scalapb.message).extends = "BasicAccountDecorator";
     option (scalapb.message).companion_extends = "BasicAccountCompanion";
     required string uuid = 1;
-    required google.protobuf.Timestamp createdDate = 2 [(scalapb.field).type = "java.util.Date"];
-    required google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.util.Date"];
+    required google.protobuf.Timestamp createdDate = 2 [(scalapb.field).type = "java.time.Instant"];
+    required google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.time.Instant"];
     required Principal principal = 4;
 //    required Principal primaryPrincipal = 5;
     repeated Principal secondaryPrincipals = 6;
     optional BasicAccountProfile currentProfile = 7 [(scalapb.field).type = "Profile"];
     map<string, BasicAccountProfile> profiles = 8 [(scalapb.field).value_type = "Profile"];
     required string credentials = 9;
-    optional google.protobuf.Timestamp lastLogin = 10 [(scalapb.field).type = "java.util.Date"];
+    optional google.protobuf.Timestamp lastLogin = 10 [(scalapb.field).type = "java.time.Instant"];
     required int32 nbLoginFailures = 11 [default = 0];
     required AccountStatus status = 12 [default = Inactive];
     optional VerificationToken verificationToken = 13;
     optional VerificationCode verificationCode = 14;
     optional BasicAccountDetails details = 15 [(scalapb.field).type = "AccountDetails"];
     repeated DeviceRegistration registrations = 16;
-    optional google.protobuf.Timestamp lastLogout = 17 [(scalapb.field).type = "java.util.Date"];
+    optional google.protobuf.Timestamp lastLogout = 17 [(scalapb.field).type = "java.time.Instant"];
     optional bool anonymous = 18;
     optional bool fromAnonymous = 19;
     extensions 100 to max;

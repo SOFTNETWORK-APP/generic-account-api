@@ -7,8 +7,9 @@ import app.softnetwork.account.handlers.{AccountDao, MockBasicAccountDao, MockBa
 import app.softnetwork.account.model.{BasicAccount, BasicAccountProfile}
 import app.softnetwork.account.persistence.query.AccountEventProcessorStreams.InternalAccountEvents2AccountProcessorStream
 import app.softnetwork.account.persistence.typed.{AccountBehavior, MockBasicAccountBehavior}
-import app.softnetwork.persistence.query.InMemoryJournalProvider
+import app.softnetwork.persistence.query.{InMemoryJournalProvider, InMemoryOffsetProvider}
 import org.scalatest.Suite
+import org.slf4j.{Logger, LoggerFactory}
 
 trait BasicAccountTestKit
     extends AccountTestKit[BasicAccount, BasicAccountProfile, Notification]
@@ -22,7 +23,9 @@ trait BasicAccountTestKit
     : ActorSystem[_] => InternalAccountEvents2AccountProcessorStream = sys =>
     new InternalAccountEvents2AccountProcessorStream
       with MockBasicAccountHandler
-      with InMemoryJournalProvider {
+      with InMemoryJournalProvider
+      with InMemoryOffsetProvider {
+      lazy val log: Logger = LoggerFactory getLogger getClass.getName
       override def tag: String = s"${MockBasicAccountBehavior.persistenceId}-to-internal"
       override lazy val forTests: Boolean = true
       override implicit def system: ActorSystem[_] = sys

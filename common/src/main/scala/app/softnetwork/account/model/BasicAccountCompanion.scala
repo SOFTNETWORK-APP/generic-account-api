@@ -3,8 +3,9 @@ package app.softnetwork.account.model
 import app.softnetwork.security.Sha512Encryption._
 import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.message.{InitAdminAccount, SignUp}
-
 import app.softnetwork.persistence._
+
+import java.time.Instant
 
 /** Created by smanciot on 03/04/2018.
   */
@@ -43,8 +44,8 @@ trait BasicAccountCompanion {
       val basicAccount =
         BasicAccount.defaultInstance
           .withUuid(uuid.getOrElse(generateUUID()))
-          .withCreatedDate(now())
-          .withLastUpdated(now())
+          .withCreatedDate(Instant.now())
+          .withLastUpdated(Instant.now())
           .withPrincipal(principal)
           .withCredentials(encrypt(password))
           .withStatus(status)

@@ -22,7 +22,7 @@ option (scalapb.options) = {
     preamble: "trait InternalAccountEvent extends AccountEvent {def uuid: String}"
     preamble: "trait DeviceEvent extends AccountEvent"
     preamble: "trait AccountCreatedEvent[T <: Account] extends Created[T] with AccountEvent"
-    preamble: "trait ProfileUpdatedEvent[T <: Profile] extends AccountEvent {def uuid: String; def profile: T; def loginUpdated: Option[Boolean]; def lastUpdated: Option[java.util.Date]}"
+    preamble: "trait ProfileUpdatedEvent[T <: Profile] extends AccountEvent {def uuid: String; def profile: T; def loginUpdated: Option[Boolean]; def lastUpdated: Option[java.time.Instant]}"
     preserve_unknown_fields: false
 };
 
@@ -31,7 +31,7 @@ message DeviceRegisteredEvent {
     option (scalapb.message).extends = "AccountEvent";
     required string uuid = 1;
     required app.softnetwork.account.model.DeviceRegistration registration = 2;
-    optional google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.util.Date"];
+    optional google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.time.Instant"];
 }
 
 message DeviceUnregisteredEvent {
@@ -39,21 +39,21 @@ message DeviceUnregisteredEvent {
     option (scalapb.message).extends = "AccountEvent";
     required string uuid = 1;
     required app.softnetwork.account.model.DeviceRegistration registration = 2;
-    optional google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.util.Date"];
+    optional google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.time.Instant"];
 }
 
 message BasicAccountCreatedEvent {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "AccountCreatedEvent[BasicAccount]";
     required app.softnetwork.account.model.BasicAccount document = 1;
-    optional google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
+    optional google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.time.Instant"];
 }
 
 message AccountActivatedEvent {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "AccountEvent";
     required string uuid = 1;
-    optional google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
+    optional google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.time.Instant"];
 }
 
 message AccountDisabledEvent {
@@ -61,14 +61,14 @@ message AccountDisabledEvent {
     option (scalapb.message).extends = "AccountEvent";
     required string uuid = 1;
     required int32 nbLoginFailures = 2;
-    optional google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.util.Date"];
+    optional google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.time.Instant"];
 }
 
 message AccountDeletedEvent {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "AccountEvent";
     required string uuid = 1;
-    optional google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
+    optional google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.time.Instant"];
 }
 
 message AccountDestroyedEvent {
@@ -76,7 +76,7 @@ message AccountDestroyedEvent {
     option (scalapb.message).extends = "AccountEvent";
     option (scalapb.message).extends = "Deleted";
     required string uuid = 1;
-    optional google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
+    optional google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.time.Instant"];
 }
 
 message PasswordUpdatedEvent {
@@ -86,14 +86,14 @@ message PasswordUpdatedEvent {
     required string credentials = 2;
     optional app.softnetwork.account.model.VerificationCode code = 3;
     optional app.softnetwork.account.model.VerificationToken token = 4;
-    optional google.protobuf.Timestamp lastUpdated = 5 [(scalapb.field).type = "java.util.Date"];
+    optional google.protobuf.Timestamp lastUpdated = 5 [(scalapb.field).type = "java.time.Instant"];
 }
 
 message LoginSucceeded {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "AccountEvent";
     required string uuid = 1;
-    required google.protobuf.Timestamp lastLogin = 2 [(scalapb.field).type = "java.util.Date"];
+    required google.protobuf.Timestamp lastLogin = 2 [(scalapb.field).type = "java.time.Instant"];
     optional string anonymous = 3;
 }
 
@@ -102,7 +102,7 @@ message LoginFailed {
     option (scalapb.message).extends = "AccountEvent";
     required string uuid = 1;
     required int32 nbLoginFailures = 2;
-    optional google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.util.Date"];
+    optional google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.time.Instant"];
 }
 
 message VerificationTokenAdded {
@@ -110,7 +110,7 @@ message VerificationTokenAdded {
     option (scalapb.message).extends = "AccountEvent";
     required string uuid = 1;
     required app.softnetwork.account.model.VerificationToken token = 2;
-    optional google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.util.Date"];
+    optional google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.time.Instant"];
 }
 
 message VerificationCodeAdded {
@@ -118,7 +118,7 @@ message VerificationCodeAdded {
     option (scalapb.message).extends = "AccountEvent";
     required string uuid = 1;
     required app.softnetwork.account.model.VerificationCode code = 2;
-    optional google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.util.Date"];
+    optional google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.time.Instant"];
 }
 
 message ProfileSwitchedEvent {
@@ -126,7 +126,7 @@ message ProfileSwitchedEvent {
     option (scalapb.message).extends = "AccountEvent";
     required string uuid = 1;
     required string name = 2;
-    optional google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.util.Date"];
+    optional google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.time.Instant"];
 }
 
 message BasicAccountProfileUpdatedEvent {
@@ -135,7 +135,7 @@ message BasicAccountProfileUpdatedEvent {
     required string uuid = 1;
     required app.softnetwork.account.model.BasicAccountProfile profile = 2;
     optional bool loginUpdated = 3;
-    optional google.protobuf.Timestamp lastUpdated = 4 [(scalapb.field).type = "java.util.Date"];
+    optional google.protobuf.Timestamp lastUpdated = 4 [(scalapb.field).type = "java.time.Instant"];
 }
 
 message LoginUpdatedEvent {
@@ -143,14 +143,14 @@ message LoginUpdatedEvent {
     option (scalapb.message).extends = "AccountEvent";
     required string uuid = 1;
     required app.softnetwork.account.model.Principal principal = 2;
-    optional google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.util.Date"];
+    optional google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.time.Instant"];
 }
 
 message LogoutEvent {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "AccountEvent";
     required string uuid = 1;
-    required google.protobuf.Timestamp lastLogout = 2 [(scalapb.field).type = "java.util.Date"];
+    required google.protobuf.Timestamp lastLogout = 2 [(scalapb.field).type = "java.time.Instant"];
 }
 
 message AccountNotificationRecordedEvent {

@@ -1,6 +1,5 @@
 package app.softnetwork.account.persistence.typed
 
-import java.util.Date
 import akka.actor.typed.ActorSystem
 import app.softnetwork.concurrent.Completion
 import mustache.Mustache
@@ -17,6 +16,7 @@ import app.softnetwork.notification.message.{
 }
 import app.softnetwork.account.model._
 
+import java.time.Instant
 import scala.language.{implicitConversions, postfixOps}
 
 trait AccountNotifications[T <: Account] extends Completion {
@@ -38,7 +38,7 @@ trait AccountNotifications[T <: Account] extends Completion {
     subject: String,
     body: String,
     maxTries: Int,
-    deferred: Option[Date]
+    deferred: Option[Instant]
   )(implicit system: ActorSystem[_]): Option[ExternalEntityToNotificationEvent] = {
     account.email match {
       case Some(email) =>
@@ -69,7 +69,7 @@ trait AccountNotifications[T <: Account] extends Completion {
     subject: String,
     body: String,
     maxTries: Int,
-    deferred: Option[Date]
+    deferred: Option[Instant]
   )(implicit system: ActorSystem[_]): Option[ExternalEntityToNotificationEvent] = {
     account.gsm match {
       case Some(gsm) =>
@@ -99,7 +99,7 @@ trait AccountNotifications[T <: Account] extends Completion {
     subject: String,
     body: String,
     maxTries: Int,
-    deferred: Option[Date]
+    deferred: Option[Instant]
   )(implicit system: ActorSystem[_]): Option[ExternalEntityToNotificationEvent] = {
     if (account.registrations.isEmpty) {
       None
@@ -134,7 +134,7 @@ trait AccountNotifications[T <: Account] extends Completion {
     body: String,
     channel: NotificationType,
     maxTries: Int,
-    deferred: Option[Date]
+    deferred: Option[Instant]
   )(implicit system: ActorSystem[_]): Option[ExternalEntityToNotificationEvent] = {
     channel match {
       case NotificationType.MAIL_TYPE =>
@@ -172,7 +172,7 @@ trait AccountNotifications[T <: Account] extends Completion {
     body: String,
     channels: Seq[NotificationType],
     maxTries: Int = 1,
-    deferred: Option[Date] = None
+    deferred: Option[Instant] = None
   )(implicit log: Logger, system: ActorSystem[_]): Seq[ExternalEntityToNotificationEvent] = {
     log.info(
       s"about to send notification to ${account.primaryPrincipal.value} for channels [${channels
@@ -198,7 +198,7 @@ trait AccountNotifications[T <: Account] extends Completion {
     account: T,
     activationToken: VerificationToken,
     maxTries: Int = 3,
-    deferred: Option[Date] = None
+    deferred: Option[Instant] = None
   )(implicit log: Logger, system: ActorSystem[_]): Seq[ExternalEntityToNotificationEvent] = {
     val subject = NotificationsConfig.activation
 
@@ -224,8 +224,12 @@ trait AccountNotifications[T <: Account] extends Completion {
     )
   }
 
-  def sendRegistration(uuid: String, account: T, maxTries: Int = 2, deferred: Option[Date] = None)(
-    implicit
+  def sendRegistration(
+    uuid: String,
+    account: T,
+    maxTries: Int = 2,
+    deferred: Option[Instant] = None
+  )(implicit
     log: Logger,
     system: ActorSystem[_]
   ): Seq[ExternalEntityToNotificationEvent] = {
@@ -257,7 +261,7 @@ trait AccountNotifications[T <: Account] extends Completion {
     account: T,
     verificationCode: VerificationCode,
     maxTries: Int = 1,
-    deferred: Option[Date] = None
+    deferred: Option[Instant] = None
   )(implicit log: Logger, system: ActorSystem[_]): Seq[ExternalEntityToNotificationEvent] = {
     val subject = NotificationsConfig.resetPassword
 
@@ -287,7 +291,7 @@ trait AccountNotifications[T <: Account] extends Completion {
     uuid: String,
     account: T,
     maxTries: Int = 1,
-    deferred: Option[Date] = None
+    deferred: Option[Instant] = None
   )(implicit log: Logger, system: ActorSystem[_]): Seq[ExternalEntityToNotificationEvent] = {
     val subject = NotificationsConfig.accountDisabled
 
@@ -319,7 +323,7 @@ trait AccountNotifications[T <: Account] extends Completion {
     account: T,
     verificationToken: VerificationToken,
     maxTries: Int = 1,
-    deferred: Option[Date] = None
+    deferred: Option[Instant] = None
   )(implicit log: Logger, system: ActorSystem[_]): Seq[ExternalEntityToNotificationEvent] = {
     val subject = NotificationsConfig.resetPassword
 
@@ -351,7 +355,7 @@ trait AccountNotifications[T <: Account] extends Completion {
     uuid: String,
     account: T,
     maxTries: Int = 1,
-    deferred: Option[Date] = None
+    deferred: Option[Instant] = None
   )(implicit log: Logger, system: ActorSystem[_]): Seq[ExternalEntityToNotificationEvent] = {
     val subject = NotificationsConfig.passwordUpdated
 
@@ -380,7 +384,7 @@ trait AccountNotifications[T <: Account] extends Completion {
     uuid: String,
     account: T,
     maxTries: Int = 1,
-    deferred: Option[Date] = None
+    deferred: Option[Instant] = None
   )(implicit log: Logger, system: ActorSystem[_]): Seq[ExternalEntityToNotificationEvent] = {
     val subject = NotificationsConfig.principalUpdated
 

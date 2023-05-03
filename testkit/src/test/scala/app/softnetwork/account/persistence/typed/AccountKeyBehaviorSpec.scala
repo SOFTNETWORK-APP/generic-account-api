@@ -5,12 +5,14 @@ import app.softnetwork.kv.message._
 import app.softnetwork.account.scalatest.BasicAccountTestKit
 import org.scalatest.wordspec.AnyWordSpecLike
 import app.softnetwork.persistence.message.CommandWrapper
-
 import AccountKeyBehavior._
+import org.slf4j.{Logger, LoggerFactory}
 
 /** Created by smanciot on 19/04/2020.
   */
 class AccountKeyBehaviorSpec extends AnyWordSpecLike with BasicAccountTestKit {
+
+  lazy val log: Logger = LoggerFactory getLogger getClass.getName
 
   val kvProbe: TestProbe[KvCommandResult] = createTestProbe[KvCommandResult]()
 

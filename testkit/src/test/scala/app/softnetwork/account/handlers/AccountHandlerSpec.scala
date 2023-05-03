@@ -7,6 +7,7 @@ import app.softnetwork.account.model._
 import app.softnetwork.account.scalatest.BasicAccountTestKit
 import app.softnetwork.persistence._
 import MockGenerator._
+import org.slf4j.{Logger, LoggerFactory}
 
 /** Created by smanciot on 18/04/2020.
   */
@@ -14,6 +15,8 @@ class AccountHandlerSpec
     extends MockBasicAccountHandler
     with AnyWordSpecLike
     with BasicAccountTestKit {
+
+  lazy val log: Logger = LoggerFactory getLogger getClass.getName
 
   private val anonymous = "anonymous"
 

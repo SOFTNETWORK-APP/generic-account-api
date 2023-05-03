@@ -29,6 +29,7 @@ import scala.util.{Failure, Success}
 import Session._
 
 import app.softnetwork.persistence._
+import org.slf4j.{Logger, LoggerFactory}
 
 /** Created by smanciot on 23/04/2020.
   */
@@ -455,6 +456,7 @@ trait BasicAccountService extends AccountService with BasicAccountTypeKey {
 object BasicAccountService {
   def apply(asystem: ActorSystem[_]): BasicAccountService = {
     new BasicAccountService {
+      lazy val log: Logger = LoggerFactory getLogger getClass.getName
       override implicit def system: ActorSystem[_] = asystem
     }
   }

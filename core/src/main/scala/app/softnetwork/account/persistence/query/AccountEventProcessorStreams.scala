@@ -3,7 +3,7 @@ package app.softnetwork.account.persistence.query
 import akka.Done
 import akka.actor.typed.eventstream.EventStream.Publish
 import akka.persistence.typed.PersistenceId
-import app.softnetwork.persistence.query.{EventProcessorStream, JournalProvider}
+import app.softnetwork.persistence.query.{EventProcessorStream, JournalProvider, OffsetProvider}
 import app.softnetwork.persistence.typed.CommandTypeKey
 import app.softnetwork.account.handlers.AccountHandler
 import app.softnetwork.account.message._
@@ -18,7 +18,8 @@ object AccountEventProcessorStreams {
 
   trait InternalAccountEvents2AccountProcessorStream
       extends EventProcessorStream[InternalAccountEvent]
-      with AccountHandler { _: JournalProvider with CommandTypeKey[AccountCommand] =>
+      with AccountHandler {
+    _: JournalProvider with OffsetProvider with CommandTypeKey[AccountCommand] =>
 
     def forTests: Boolean = false
 
@@ -41,7 +42,7 @@ object AccountEventProcessorStreams {
       val command = WrapInternalAccountEvent(event)
       ?(uuid, command) map {
         case e: AccountErrorMessage =>
-          logger.error(
+          log.error(
             s"$platformEventProcessorId - command ${command.getClass} returns unexpectedly ${e.message}"
           )
           Done
@@ -55,7 +56,7 @@ object AccountEventProcessorStreams {
   trait Scheduler2AccountProcessorStream
       extends Scheduler2EntityProcessorStream[AccountCommand, AccountCommandResult]
       with AccountHandler {
-    _: JournalProvider with CommandTypeKey[AccountCommand] =>
+    _: JournalProvider with OffsetProvider with CommandTypeKey[AccountCommand] =>
 
     override protected def triggerSchedule(schedule: Schedule): Future[Boolean] = {
       !?(TriggerSchedule4Account(schedule)) map {

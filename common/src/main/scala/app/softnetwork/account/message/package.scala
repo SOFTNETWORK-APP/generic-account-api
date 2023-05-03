@@ -251,6 +251,7 @@ package object message {
 
   case object ResetPasswordTokenNotSent extends AccountErrorMessage("ResetPasswordTokenNotSent")
 
-  case object Schedule4AccountNotTriggered extends AccountErrorMessage("Schedule4AccountNotTriggered")
+  case object Schedule4AccountNotTriggered
+      extends AccountErrorMessage("Schedule4AccountNotTriggered")
 
 }

@@ -11,6 +11,7 @@ import app.softnetwork.account.message._
 import app.softnetwork.account.model._
 import app.softnetwork.account.handlers.MockGenerator._
 import app.softnetwork.account.scalatest.BasicAccountTestKit
+import org.slf4j.{Logger, LoggerFactory}
 
 /** Created by smanciot on 18/04/2020.
   */
@@ -18,6 +19,8 @@ class AccountServiceSpec
     extends MockBasicAccountService
     with AnyWordSpecLike
     with BasicAccountTestKit {
+
+  lazy val log: Logger = LoggerFactory getLogger getClass.getName
 
   override def asSignUp: Unmarshaller[HttpRequest, SU] = as[BasicAccountSignUp]
 

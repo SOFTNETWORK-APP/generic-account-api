@@ -10,10 +10,13 @@ import app.softnetwork.account.message._
 import app.softnetwork.account.model.{AccountStatus, AccountView, BasicAccountProfile, ProfileType}
 import app.softnetwork.api.server.config.ServerSettings._
 import app.softnetwork.account.scalatest.BasicAccountRouteTestKit
+import org.slf4j.{Logger, LoggerFactory}
 
 /** Created by smanciot on 22/03/2018.
   */
 class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
+
+  lazy val log: Logger = LoggerFactory getLogger getClass.getName
 
   private val anonymous = "anonymous"
 

@@ -7,11 +7,10 @@ import app.softnetwork.account.model.{BasicAccount, BasicAccountProfile}
 import app.softnetwork.account.persistence.query.AccountEventProcessorStreams.InternalAccountEvents2AccountProcessorStream
 import app.softnetwork.account.persistence.typed.{AccountBehavior, BasicAccountBehavior}
 import app.softnetwork.account.service.{AccountService, BasicAccountService}
-import app.softnetwork.persistence.jdbc.query.{JdbcJournalProvider, JdbcSchema, JdbcSchemaProvider}
+import app.softnetwork.persistence.jdbc.query.{JdbcJournalProvider, JdbcOffsetProvider}
+import com.typesafe.config.Config
 
-trait BasicAccountApi
-    extends AccountApplication[BasicAccount, BasicAccountProfile]
-    with JdbcSchemaProvider {
+trait BasicAccountApi extends AccountApplication[BasicAccount, BasicAccountProfile] {
 
   override def accountDao: AccountDao = BasicAccountDao
 
@@ -26,9 +25,9 @@ trait BasicAccountApi
     new InternalAccountEvents2AccountProcessorStream
       with BasicAccountTypeKey
       with JdbcJournalProvider
-      with JdbcSchemaProvider {
+      with JdbcOffsetProvider {
+      override def config: Config = BasicAccountApi.this.config
       override def tag: String = s"${BasicAccountBehavior.persistenceId}-to-internal"
-      override lazy val schemaType: JdbcSchema.SchemaType = BasicAccountApi.this.schemaType
       override implicit def system: ActorSystem[_] = sys
     }
 

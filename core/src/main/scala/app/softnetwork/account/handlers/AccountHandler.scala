@@ -7,8 +7,8 @@ import app.softnetwork.persistence.typed.CommandTypeKey
 import app.softnetwork.notification.model.NotificationType
 import app.softnetwork.account.message._
 import app.softnetwork.account.persistence.typed.BasicAccountBehavior
-
 import app.softnetwork.persistence._
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.reflect.ClassTag
@@ -78,4 +78,6 @@ trait BasicAccountTypeKey extends CommandTypeKey[AccountCommand] {
     BasicAccountBehavior.TypeKey
 }
 
-object BasicAccountDao extends AccountDao with AccountHandler with BasicAccountTypeKey
+object BasicAccountDao extends AccountDao with AccountHandler with BasicAccountTypeKey {
+  lazy val log: Logger = LoggerFactory getLogger getClass.getName
+}

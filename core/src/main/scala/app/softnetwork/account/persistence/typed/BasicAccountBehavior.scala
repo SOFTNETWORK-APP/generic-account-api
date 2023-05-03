@@ -8,7 +8,8 @@ import app.softnetwork.account.message.{
   SignUp
 }
 import app.softnetwork.account.model.{BasicAccount, BasicAccountProfile}
-import app.softnetwork.persistence.now
+
+import java.time.Instant
 
 trait BasicAccountBehavior extends AccountBehavior[BasicAccount, BasicAccountProfile] {
   self: Generator =>
@@ -20,7 +21,7 @@ trait BasicAccountBehavior extends AccountBehavior[BasicAccount, BasicAccountPro
     profile: BasicAccountProfile,
     loginUpdated: Option[Boolean]
   ): BasicAccountProfileUpdatedEvent =
-    BasicAccountProfileUpdatedEvent(uuid, profile, loginUpdated).withLastUpdated(now())
+    BasicAccountProfileUpdatedEvent(uuid, profile, loginUpdated).withLastUpdated(Instant.now())
 
   override protected def createAccountCreatedEvent(
     account: BasicAccount
