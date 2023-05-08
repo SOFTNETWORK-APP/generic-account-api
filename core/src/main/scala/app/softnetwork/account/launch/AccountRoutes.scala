@@ -6,13 +6,14 @@ import app.softnetwork.api.server.ApiRoutes
 import app.softnetwork.account.model.{Account, AccountDecorator, Profile, ProfileDecorator}
 import app.softnetwork.account.serialization.accountFormats
 import app.softnetwork.account.service.AccountService
+import app.softnetwork.persistence.schema.SchemaProvider
 import org.json4s.Formats
 
 trait AccountRoutes[
   T <: Account with AccountDecorator,
   P <: Profile with ProfileDecorator
 ] extends ApiRoutes
-    with AccountGuardian[T, P] {
+    with AccountGuardian[T, P] { _: SchemaProvider =>
 
   override implicit def formats: Formats = accountFormats
 

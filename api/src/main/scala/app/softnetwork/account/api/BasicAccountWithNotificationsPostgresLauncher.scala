@@ -1,14 +1,11 @@
 package app.softnetwork.account.api
 
-import akka.{actor => classic}
 import akka.actor.typed.ActorSystem
 import app.softnetwork.notification.api.AllNotificationsApi
-import app.softnetwork.persistence.jdbc.schema.PostgresSchemaProvider
+import app.softnetwork.persistence.jdbc.schema.JdbcSchemaTypes
 import app.softnetwork.persistence.launch.PersistentEntity
 import app.softnetwork.persistence.query.EventProcessorStream
-import app.softnetwork.persistence.schema.SchemaProvider
-import app.softnetwork.persistence.typed._
-import com.typesafe.config.Config
+import app.softnetwork.persistence.schema.SchemaType
 import org.slf4j.{Logger, LoggerFactory}
 
 object BasicAccountWithNotificationsPostgresLauncher
@@ -17,12 +14,7 @@ object BasicAccountWithNotificationsPostgresLauncher
 
   lazy val log: Logger = LoggerFactory getLogger getClass.getName
 
-  override def schemaProvider: ActorSystem[_] => SchemaProvider = sys =>
-    new PostgresSchemaProvider {
-      override implicit def classicSystem: classic.ActorSystem = sys
-
-      override def config: Config = BasicAccountWithNotificationsPostgresLauncher.this.config
-    }
+  override val schemaType: SchemaType = JdbcSchemaTypes.Postgres
 
   /** initialize all entities
     */

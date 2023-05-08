@@ -12,12 +12,13 @@ import app.softnetwork.account.persistence.typed.AccountBehavior
 import app.softnetwork.persistence.launch.PersistentEntity
 import app.softnetwork.persistence.query.EventProcessorStream
 import app.softnetwork.persistence.launch.PersistenceGuardian._
+import app.softnetwork.persistence.schema.SchemaProvider
 import app.softnetwork.session.launch.SessionGuardian
 
 trait AccountGuardian[
   T <: Account with AccountDecorator,
   P <: Profile with ProfileDecorator
-] extends SessionGuardian {
+] extends SessionGuardian { _: SchemaProvider =>
 
   def accountBehavior: ActorSystem[_] => AccountBehavior[T, P]
 
