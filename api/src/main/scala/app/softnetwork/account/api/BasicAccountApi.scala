@@ -8,12 +8,11 @@ import app.softnetwork.account.persistence.query.AccountEventProcessorStreams.In
 import app.softnetwork.account.persistence.typed.{AccountBehavior, BasicAccountBehavior}
 import app.softnetwork.account.service.{AccountService, BasicAccountService}
 import app.softnetwork.persistence.jdbc.query.{JdbcJournalProvider, JdbcOffsetProvider}
-import app.softnetwork.persistence.jdbc.schema.JdbcSchemaProvider
+import app.softnetwork.persistence.schema.SchemaProvider
 import com.typesafe.config.Config
 
-trait BasicAccountApi
-    extends AccountApplication[BasicAccount, BasicAccountProfile]
-    with JdbcSchemaProvider {
+trait BasicAccountApi extends AccountApplication[BasicAccount, BasicAccountProfile] {
+  _: SchemaProvider =>
 
   override def accountDao: AccountDao = BasicAccountDao
 
