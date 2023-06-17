@@ -9,7 +9,8 @@ import org.slf4j.{Logger, LoggerFactory}
 class BasicAccountHandlerSpec
     extends AccountHandlerSpec[BasicAccount, BasicAccountProfile]
     with MockBasicAccountHandler
-    with BasicAccountTestKit {
+    with BasicAccountTestKit
+    with MockGenerator {
 
   lazy val log: Logger = LoggerFactory getLogger getClass.getName
 

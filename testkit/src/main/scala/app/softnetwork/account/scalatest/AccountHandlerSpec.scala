@@ -1,11 +1,10 @@
 package app.softnetwork.account.scalatest
 
 import app.softnetwork.account.config.AccountSettings
-import app.softnetwork.account.handlers.{AccountHandler, MockGenerator}
+import app.softnetwork.account.handlers.{AccountHandler, Generator}
 import app.softnetwork.account.message._
 import app.softnetwork.account.model._
 import app.softnetwork.persistence._
-import MockGenerator._
 import app.softnetwork.persistence.typed.CommandTypeKey
 import org.scalatest.wordspec.AnyWordSpecLike
 
@@ -14,7 +13,7 @@ import org.scalatest.wordspec.AnyWordSpecLike
 trait AccountHandlerSpec[T <: Account with AccountDecorator, P <: Profile with ProfileDecorator]
     extends AccountHandler
     with AnyWordSpecLike
-    with AccountTestKit[T, P] {_: CommandTypeKey[AccountCommand] =>
+    with AccountTestKit[T, P] { _: CommandTypeKey[AccountCommand] with Generator =>
 
   private val anonymous = "anonymous"
 
@@ -198,7 +197,7 @@ trait AccountHandlerSpec[T <: Account with AccountDecorator, P <: Profile with P
     }
 
     "work if account is inactive and token matches activation token" in {
-      val token = computeToken(emailUuid)
+      val token = generateToken(emailUuid).token
       this ?? (token, Activate(token)) await {
         case e: AccountActivated =>
           import e.account._
@@ -348,7 +347,7 @@ trait AccountHandlerSpec[T <: Account with AccountDecorator, P <: Profile with P
 
   "CheckResetPasswordToken" should {
     "work when a valid token has been generated for the corresponding account" in {
-      val token = computeToken(emailUuid)
+      val token = generateToken(emailUuid).token
       this ?? (token, CheckResetPasswordToken(token)) await {
         case ResetPasswordTokenChecked => succeed
         case _                         => fail()
@@ -364,7 +363,7 @@ trait AccountHandlerSpec[T <: Account with AccountDecorator, P <: Profile with P
 
   "ResetPassword" should {
     "work" in {
-      val token = computeToken(emailUuid)
+      val token = generateToken(emailUuid).token
       this ?? (token, ResetPassword(token, newPassword)) await {
         case _: PasswordReseted => succeed
         case _                  => fail()
