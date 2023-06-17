@@ -1,22 +1,28 @@
-package app.softnetwork.account.service
+package app.softnetwork.account.scalatest
 
-import akka.http.scaladsl.model.headers.BasicHttpCredentials
 import akka.http.scaladsl.model.StatusCodes
-import org.scalatest.wordspec.AnyWordSpecLike
-import app.softnetwork.serialization._
+import akka.http.scaladsl.model.headers.BasicHttpCredentials
 import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.handlers.{AccountKeyDao, MockGenerator}
 import app.softnetwork.account.message._
-import app.softnetwork.account.model.{AccountStatus, AccountView, BasicAccountProfile, ProfileType}
+import app.softnetwork.account.model.{
+  Account,
+  AccountDecorator,
+  AccountStatus,
+  AccountView,
+  Profile,
+  ProfileDecorator
+}
+import app.softnetwork.api.server.ApiRoutes
 import app.softnetwork.api.server.config.ServerSettings._
-import app.softnetwork.account.scalatest.BasicAccountRouteTestKit
-import org.slf4j.{Logger, LoggerFactory}
+import app.softnetwork.serialization._
+import org.scalatest.wordspec.AnyWordSpecLike
 
 /** Created by smanciot on 22/03/2018.
   */
-class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
-
-  lazy val log: Logger = LoggerFactory getLogger getClass.getName
+trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with ProfileDecorator]
+    extends AnyWordSpecLike
+    with AccountRouteTestKit[T, P] { _: ApiRoutes =>
 
   private val anonymous = "anonymous"
 
@@ -32,14 +38,11 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
 
   private val password = "Changeit1"
 
-  private val profile =
-    BasicAccountProfile.defaultInstance
-      .withName("name")
-      .withType(ProfileType.CUSTOMER)
+  def profile: P
 
   "MainRoutes" should {
     "contain a healthcheck path" in {
-      Get(s"/$RootPath/healthcheck") ~> mainRoutes(typedSystem()) ~> check {
+      Get(s"/$RootPath/healthcheck") ~> routes ~> check {
         status shouldEqual StatusCodes.OK
       }
     }
@@ -47,24 +50,24 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
 
   "Anonymous SignUp" should {
     "work" in {
-      Post(s"/$RootPath/${AccountSettings.Path}/anonymous") ~> mainRoutes(typedSystem()) ~> check {
+      Post(s"/$RootPath/${AccountSettings.Path}/anonymous") ~> routes ~> check {
         status shouldEqual StatusCodes.Created
         val account = responseAs[AccountView]
         account.status shouldBe AccountStatus.Active
         account.anonymous.getOrElse(false) shouldBe true
-        cookies = extractCookies(headers)
+        httpHeaders = extractHeaders(headers)
       }
     }
   }
 
   "SignUp" should {
     "work with anonymous account" in {
-      withCookies(
+      withHeaders(
         Post(
           s"/$RootPath/${AccountSettings.Path}/signUp",
-          BasicAccountSignUp(anonymous, password, profile = Some(profile))
+          implicitly[SignUp]((anonymous, password, Some(profile)))
         )
-      ) ~> mainRoutes(typedSystem()) ~> check {
+      ) ~> routes ~> check {
         status shouldEqual StatusCodes.Created
         val account = responseAs[AccountView]
         account.status shouldBe AccountStatus.Active
@@ -76,7 +79,7 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
       Post(
         s"/$RootPath/${AccountSettings.Path}/signUp",
         BasicAccountSignUp(username, password, Some("fake"))
-      ) ~> mainRoutes(typedSystem()) ~> check {
+      ) ~> routes ~> check {
         status shouldEqual StatusCodes.BadRequest
         responseAs[AccountErrorMessage].message shouldBe PasswordsNotMatched.message
       }
@@ -84,8 +87,8 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
     "work with username" in {
       Post(
         s"/$RootPath/${AccountSettings.Path}/signUp",
-        BasicAccountSignUp(username, password, profile = Some(profile))
-      ) ~> mainRoutes(typedSystem()) ~> check {
+        implicitly[SignUp]((username, password, Some(profile)))
+      ) ~> routes ~> check {
         status shouldEqual StatusCodes.Created
         responseAs[AccountView].status shouldBe AccountStatus.Active
       }
@@ -104,8 +107,8 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
     "work with email" in {
       Post(
         s"/$RootPath/${AccountSettings.Path}/signUp",
-        BasicAccountSignUp(email, password, profile = Some(profile.withEmail(email)))
-      ) ~> mainRoutes(typedSystem()) ~> check {
+        implicitly[SignUp]((email, password, Some(profile)))
+      ) ~> routes ~> check {
         status shouldEqual StatusCodes.Created
         val account = responseAs[AccountView]
         if (AccountSettings.ActivationEnabled) {
@@ -129,8 +132,8 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
     "work with gsm" in {
       Post(
         s"/$RootPath/${AccountSettings.Path}/signUp",
-        BasicAccountSignUp(gsm, password, profile = Some(profile.withPhoneNumber(gsm)))
-      ) ~> mainRoutes(typedSystem()) ~> check {
+        implicitly[SignUp]((gsm, password, Some(profile)))
+      ) ~> routes ~> check {
         status shouldEqual StatusCodes.Created
         responseAs[AccountView].status shouldBe AccountStatus.Active
       }
@@ -164,9 +167,9 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
 
   "Login" should {
     "work with matching username and password within an anonymous session" in {
-      withCookies(
+      withHeaders(
         Post(s"/$RootPath/${AccountSettings.Path}/login", Login(username, password))
-      ) ~> mainRoutes(typedSystem()) ~> check {
+      ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
         responseAs[AccountView].status shouldBe AccountStatus.Active
       }
@@ -177,7 +180,7 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
           Get(
             s"/$RootPath/${AccountSettings.Path}/activate",
             Activate(MockGenerator.computeToken(uuid))
-          ) ~> mainRoutes(typedSystem())
+          ) ~> routes
           Post(s"/$RootPath/${AccountSettings.Path}/login", Login(email, password)) ~> mainRoutes(
             typedSystem()
           ) ~> check {
@@ -273,16 +276,16 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
       Post(
         s"/$RootPath/${AccountSettings.Path}/verificationCode",
         SendVerificationCode(gsm)
-      ) ~> mainRoutes(typedSystem()) ~> check {
+      ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
-        cookies = extractCookies(headers)
+        httpHeaders = extractHeaders(headers)
       }
-      withCookies(
+      withHeaders(
         Post(
           s"/$RootPath/${AccountSettings.Path}/resetPassword",
           ResetPassword(MockGenerator.code, password)
         )
-      ) ~> mainRoutes(typedSystem()) ~> check {
+      ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
       }
     }
@@ -293,11 +296,11 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
       Post(
         s"/$RootPath/${AccountSettings.Path}/login",
         Login(gsm, password, refreshable = true)
-      ) ~> mainRoutes(typedSystem()) ~> check {
+      ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
-        cookies = extractCookies(headers)
+        httpHeaders = extractHeaders(headers)
       }
-      withCookies(Post(s"/$RootPath/${AccountSettings.Path}/logout")) ~> mainRoutes(
+      withHeaders(Post(s"/$RootPath/${AccountSettings.Path}/logout")) ~> mainRoutes(
         typedSystem()
       ) ~> check {
         status shouldEqual StatusCodes.OK
@@ -310,11 +313,11 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
       Post(
         s"/$RootPath/${AccountSettings.Path}/login",
         Login(gsm, password, refreshable = true)
-      ) ~> mainRoutes(typedSystem()) ~> check {
+      ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
-        cookies = extractCookies(headers)
+        httpHeaders = extractHeaders(headers)
       }
-      withCookies(Post(s"/$RootPath/${AccountSettings.Path}/unsubscribe")) ~> mainRoutes(
+      withHeaders(Post(s"/$RootPath/${AccountSettings.Path}/unsubscribe")) ~> mainRoutes(
         typedSystem()
       ) ~> check {
         status shouldEqual StatusCodes.OK
@@ -328,7 +331,7 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
       Post(
         s"/$RootPath/${AccountSettings.Path}/verificationCode",
         SendVerificationCode(email)
-      ) ~> mainRoutes(typedSystem()) ~> check {
+      ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
       }
     }
@@ -336,7 +339,7 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
       Post(
         s"/$RootPath/${AccountSettings.Path}/verificationCode",
         SendVerificationCode(gsm)
-      ) ~> mainRoutes(typedSystem()) ~> check {
+      ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
       }
     }

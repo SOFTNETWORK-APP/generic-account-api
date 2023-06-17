@@ -1,28 +1,22 @@
-package app.softnetwork.account.service
+package app.softnetwork.account.scalatest
 
 import akka.actor.typed.ActorSystem
-import akka.http.scaladsl.model.HttpRequest
-import akka.http.scaladsl.unmarshalling.Unmarshaller
-import org.scalatest.wordspec.AnyWordSpecLike
-import app.softnetwork.persistence._
-import app.softnetwork.notification.model.Platform
 import app.softnetwork.account.config.AccountSettings
+import app.softnetwork.account.handlers.MockGenerator._
 import app.softnetwork.account.message._
 import app.softnetwork.account.model._
-import app.softnetwork.account.handlers.MockGenerator._
-import app.softnetwork.account.scalatest.BasicAccountTestKit
-import org.slf4j.{Logger, LoggerFactory}
+import app.softnetwork.account.service.AccountService
+import app.softnetwork.notification.model.Platform
+import app.softnetwork.persistence._
+import app.softnetwork.persistence.typed.CommandTypeKey
+import org.scalatest.wordspec.AnyWordSpecLike
 
 /** Created by smanciot on 18/04/2020.
   */
-class AccountServiceSpec
-    extends MockBasicAccountService
+trait AccountServiceSpec[T <: Account with AccountDecorator, P <: Profile with ProfileDecorator]
+    extends AccountService
     with AnyWordSpecLike
-    with BasicAccountTestKit {
-
-  lazy val log: Logger = LoggerFactory getLogger getClass.getName
-
-  override def asSignUp: Unmarshaller[HttpRequest, SU] = as[BasicAccountSignUp]
+    with AccountTestKit[T, P] { _: CommandTypeKey[AccountCommand] =>
 
   implicit lazy val system: ActorSystem[_] = typedSystem()
 

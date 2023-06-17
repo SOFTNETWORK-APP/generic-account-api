@@ -7,6 +7,7 @@ import app.softnetwork.account.model.{Account, AccountDecorator, Profile, Profil
 import app.softnetwork.account.serialization.accountFormats
 import app.softnetwork.account.service.AccountService
 import app.softnetwork.persistence.schema.SchemaProvider
+import app.softnetwork.session.service.SessionService
 import org.json4s.Formats
 
 trait AccountRoutes[
@@ -16,6 +17,8 @@ trait AccountRoutes[
     with AccountGuardian[T, P] { _: SchemaProvider =>
 
   override implicit def formats: Formats = accountFormats
+
+  def sessionService: ActorSystem[_] => SessionService
 
   def accountService: ActorSystem[_] => AccountService
 

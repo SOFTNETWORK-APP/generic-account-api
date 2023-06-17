@@ -1,22 +1,20 @@
-package app.softnetwork.account.handlers
+package app.softnetwork.account.scalatest
 
-import org.scalatest.wordspec.AnyWordSpecLike
 import app.softnetwork.account.config.AccountSettings
+import app.softnetwork.account.handlers.{AccountHandler, MockGenerator}
 import app.softnetwork.account.message._
 import app.softnetwork.account.model._
-import app.softnetwork.account.scalatest.BasicAccountTestKit
 import app.softnetwork.persistence._
 import MockGenerator._
-import org.slf4j.{Logger, LoggerFactory}
+import app.softnetwork.persistence.typed.CommandTypeKey
+import org.scalatest.wordspec.AnyWordSpecLike
 
 /** Created by smanciot on 18/04/2020.
   */
-class AccountHandlerSpec
-    extends MockBasicAccountHandler
+trait AccountHandlerSpec[T <: Account with AccountDecorator, P <: Profile with ProfileDecorator]
+    extends AccountHandler
     with AnyWordSpecLike
-    with BasicAccountTestKit {
-
-  lazy val log: Logger = LoggerFactory getLogger getClass.getName
+    with AccountTestKit[T, P] {_: CommandTypeKey[AccountCommand] =>
 
   private val anonymous = "anonymous"
 

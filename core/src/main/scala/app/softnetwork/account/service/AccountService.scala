@@ -1,6 +1,5 @@
 package app.softnetwork.account.service
 
-import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.{Directives, Route}
 import akka.http.scaladsl.server.directives.Credentials
@@ -29,14 +28,12 @@ import scala.util.{Failure, Success}
 import Session._
 
 import app.softnetwork.persistence._
-import org.slf4j.{Logger, LoggerFactory}
 
 /** Created by smanciot on 23/04/2020.
   */
 trait AccountService
     extends Service[AccountCommand, AccountCommandResult]
     with AccountHandler
-    with SessionService
     with Directives
     with DefaultComplete
     with Json4sSupport
@@ -51,6 +48,8 @@ trait AccountService
   implicit def formats: Formats = accountFormats
 
   implicit def serialization: Serialization.type = jackson.Serialization
+
+  def sessionService: SessionService
 
   val route: Route = {
     pathPrefix(AccountSettings.Path) {
@@ -73,7 +72,7 @@ trait AccountService
   lazy val anonymous: Route = path("anonymous") {
     post {
       pathEnd {
-        _optionalSession(ec) { maybeSession =>
+        sessionService.optionalSession { maybeSession =>
           val uuid = maybeSession match {
             case Some(session) if session.anonymous && session.id.nonEmpty => session.id
             case _                                                         => generateUUID()
@@ -85,7 +84,7 @@ trait AccountService
               // create a new session
               val session = Session(account.uuid)
               session += (Session.anonymousKey, true)
-              sessionToDirective(session)(ec) {
+              sessionService.setSession(session) {
                 // create a new anti csrf token
                 setNewCsrfToken(checkHeader) {
                   complete(HttpResponse(status = StatusCodes.Created, entity = account.view))
@@ -103,7 +102,7 @@ trait AccountService
   lazy val signUp: Route = path("signUp") {
     post {
       entity(asSignUp) { signUp =>
-        _optionalSession(ec) { maybeSession =>
+        sessionService.optionalSession { maybeSession =>
           val uuid = maybeSession match {
             case Some(session) if session.anonymous && session.id.nonEmpty => session.id
             case _                                                         => generateUUID()
@@ -121,7 +120,7 @@ trait AccountService
                 // create a new session
                 val session = Session(account.uuid)
                 session += (Session.anonymousKey, false)
-                sessionToDirective(session)(ec) {
+                sessionService.setSession(session) {
                   // create a new anti csrf token
                   setNewCsrfToken(checkHeader) {
                     completion
@@ -147,7 +146,7 @@ trait AccountService
           case r: AccountActivated =>
             val account = r.account
             // create a new session
-            sessionToDirective(Session(account.uuid))(ec) {
+            sessionService.setSession(Session(account.uuid)) {
               // create a new anti csrf token
               setNewCsrfToken(checkHeader) {
                 complete(HttpResponse(StatusCodes.OK, entity = account.view))
@@ -168,7 +167,7 @@ trait AccountService
         val session = Session(account.uuid)
         session += (Session.adminKey, account.isAdmin)
         session += (Session.anonymousKey, false)
-        sessionToDirective(session)(ec) {
+        sessionService.setSession(session) {
           // create a new anti csrf token
           setNewCsrfToken(checkHeader) {
             complete(HttpResponse(StatusCodes.OK, entity = account.view))
@@ -181,7 +180,7 @@ trait AccountService
   lazy val login: Route = path("login" | "signIn") {
     post {
       entity(as[Login]) { login =>
-        _optionalSession(ec) { maybeSession =>
+        sessionService.optionalSession { maybeSession =>
           // execute Login
           run(
             login.login,
@@ -209,7 +208,7 @@ trait AccountService
                   session += (profileKey, profile.name)
                 case _ =>
               }
-              sessionToDirective(session)(ec) {
+              sessionService.setSession(session) {
                 // create a new anti csrf token
                 setNewCsrfToken(checkHeader) {
                   complete(HttpResponse(StatusCodes.OK, entity = account.view))
@@ -226,14 +225,14 @@ trait AccountService
 
   lazy val logout: Route = path("logout" | "signOut") {
     // check anti CSRF token
-    randomTokenCsrfProtection(checkHeader) {
+    hmacTokenCsrfProtection(checkHeader) {
       post {
         // check if a session exists
-        _requiredSession(ec) { session =>
+        sessionService.requiredSession { session =>
           run(session.id, Logout) completeWith {
             case _: LogoutSucceeded.type =>
               // invalidate session
-              _invalidateSession(ec) {
+              sessionService.invalidateSession {
                 complete(HttpResponse(StatusCodes.OK, entity = Map[String, String]()))
               }
             case error: AccountErrorMessage =>
@@ -247,14 +246,14 @@ trait AccountService
 
   lazy val unsubscribe: Route = path("unsubscribe") {
     // check anti CSRF token
-    randomTokenCsrfProtection(checkHeader) {
+    hmacTokenCsrfProtection(checkHeader) {
       post {
         // check if a session exists
-        _requiredSession(ec) { session =>
+        sessionService.requiredSession { session =>
           run(session.id, Unsubscribe(session.id)) completeWith {
             case r: AccountDeleted =>
               // invalidate session
-              _invalidateSession(ec) {
+              sessionService.invalidateSession {
                 complete(HttpResponse(status = StatusCodes.OK, entity = r.account.view))
               }
             case error: AccountErrorMessage =>
@@ -321,7 +320,7 @@ trait AccountService
 
   lazy val resetPassword: Route = path("resetPassword") {
     // check anti CSRF token
-    randomTokenCsrfProtection(checkHeader) {
+    hmacTokenCsrfProtection(checkHeader) {
       post {
         entity(as[ResetPassword]) { reset =>
           run(reset.token, reset) completeWith {
@@ -329,7 +328,7 @@ trait AccountService
               // create a new session
               val session = Session(r.uuid)
               session += (Session.anonymousKey, false)
-              sessionToDirective(session)(ec) {
+              sessionService.setSession(session) {
                 complete(HttpResponse(status = StatusCodes.OK))
               }
             case error: AccountErrorMessage =>
@@ -343,9 +342,9 @@ trait AccountService
 
   lazy val device: Route = pathPrefix("device") {
     // check anti CSRF token
-    randomTokenCsrfProtection(checkHeader) {
+    hmacTokenCsrfProtection(checkHeader) {
       // check if a session exists
-      _requiredSession(ec) { session =>
+      sessionService.requiredSession { session =>
         post {
           entity(as[DeviceRegistration]) { registration =>
             run(
@@ -378,9 +377,9 @@ trait AccountService
 
   lazy val password: Route = pathPrefix("password") {
     // check anti CSRF token
-    randomTokenCsrfProtection(checkHeader) {
+    hmacTokenCsrfProtection(checkHeader) {
       // check if a session exists
-      _requiredSession(ec) { session =>
+      sessionService.requiredSession { session =>
         post {
           entity(as[PasswordData]) { data =>
             import data._
@@ -406,9 +405,9 @@ trait AccountService
 
   lazy val principal: Route = path("principal") {
     // check anti CSRF token
-    randomTokenCsrfProtection(checkHeader) {
+    hmacTokenCsrfProtection(checkHeader) {
       // check if a session exists
-      _requiredSession(ec) { session =>
+      sessionService.requiredSession { session =>
         post {
           entity(as[UpdateLogin]) { login =>
             run(session.id, login) completeWith {
@@ -451,13 +450,4 @@ trait BasicAccountService extends AccountService with BasicAccountTypeKey {
   override implicit def toSignUp: SU => SignUp = identity
 
   override def asSignUp: Unmarshaller[HttpRequest, SU] = as[BasicAccountSignUp]
-}
-
-object BasicAccountService {
-  def apply(asystem: ActorSystem[_]): BasicAccountService = {
-    new BasicAccountService {
-      lazy val log: Logger = LoggerFactory getLogger getClass.getName
-      override implicit def system: ActorSystem[_] = asystem
-    }
-  }
 }

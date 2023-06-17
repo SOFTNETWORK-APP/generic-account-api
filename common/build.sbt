@@ -8,8 +8,8 @@ libraryDependencies ++= Seq(
   "org.passay" % "passay" % "1.3.1",
   "app.softnetwork.notification" %% "notification-common" % Versions.notification,
   "app.softnetwork.notification" %% "notification-common" % Versions.notification % "protobuf",
-  "app.softnetwork.api" %% "generic-server-api" % Versions.server,
-  "app.softnetwork.protobuf" %% "scalapb-extensions" % "0.1.6"
+  "app.softnetwork.api" %% "generic-server-api" % Versions.genericPersistence,
+  "app.softnetwork.protobuf" %% "scalapb-extensions" % "0.1.7"
 )
 
 Compile / unmanagedResourceDirectories += baseDirectory.value / "src/main/protobuf"
