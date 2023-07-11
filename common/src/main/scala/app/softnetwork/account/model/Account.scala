@@ -59,16 +59,24 @@ trait AccountDetails extends Timestamped {
   def userName: Option[String]
 }
 
+case class AccountDetailsView(
+  firstName: String,
+  lastName: String,
+  phoneNumber: Option[String],
+  email: Option[String],
+  userName: Option[String]
+)
+
 @SerialVersionUID(0L)
-class AccountView(
-  val lastLogin: Option[Instant],
-  val status: AccountStatus,
-  val createdDate: Instant,
-  val lastUpdated: Instant,
-  val currentProfile: Option[Profile],
-  val details: Option[AccountDetails],
-  val anonymous: Option[Boolean],
-  val fromAnonymous: Option[Boolean]
+case class AccountView(
+  lastLogin: Option[Instant],
+  status: AccountStatus,
+  createdDate: Instant,
+  lastUpdated: Instant,
+  currentProfile: Option[ProfileView],
+  details: Option[AccountDetailsView],
+  anonymous: Option[Boolean],
+  fromAnonymous: Option[Boolean]
 )
 
 /** A collection of all principals associated with a corresponding Subject. A principal is just a
@@ -257,18 +265,18 @@ trait Profile extends AccountDetails with ProfileDecorator {
 }
 
 @SerialVersionUID(0L)
-class ProfileView(
-  val uuid: String,
-  val createdDate: Instant,
-  val lastUpdated: Instant,
-  val firstName: String,
-  val lastName: String,
-  val phoneNumber: Option[String],
-  val email: Option[String],
-  val userName: Option[String],
-  val name: String,
-  val `type`: ProfileType,
-  val description: Option[String]
+case class ProfileView(
+  uuid: String,
+  createdDate: Instant,
+  lastUpdated: Instant,
+  firstName: String,
+  lastName: String,
+  phoneNumber: Option[String],
+  email: Option[String],
+  userName: Option[String],
+  name: String,
+  `type`: ProfileType,
+  description: Option[String]
 ) extends AccountDetails {}
 
 trait AccountDecorator { account: Account =>
@@ -324,13 +332,21 @@ trait AccountDecorator { account: Account =>
   def copyWithFromAnonymous(fromAnonymous: Boolean): Account = withFromAnonymous(fromAnonymous)
 
   def view: AccountView =
-    new AccountView(
+    AccountView(
       account.lastLogin,
       account.status,
       account.createdDate,
       account.lastUpdated,
-      account.currentProfile,
-      account.details,
+      account.currentProfile.map(_.view),
+      account.details.map(details =>
+        AccountDetailsView(
+          details.firstName,
+          details.lastName,
+          details.phoneNumber,
+          details.email,
+          details.userName
+        )
+      ),
       account.anonymous,
       account.fromAnonymous
     )
@@ -378,7 +394,7 @@ trait ProfileDecorator { profile: Profile =>
   }
 
   def view: ProfileView =
-    new ProfileView(
+    ProfileView(
       uuid = profile.uuid,
       createdDate = profile.createdDate,
       lastUpdated = profile.lastUpdated,

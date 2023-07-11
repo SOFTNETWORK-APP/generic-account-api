@@ -6,7 +6,9 @@ import app.softnetwork.account.service.{AccountService, MockBasicAccountService}
 import app.softnetwork.persistence.schema.SchemaProvider
 import app.softnetwork.session.scalatest.{
   OneOffCookieSessionServiceTestKit,
-  OneOffHeaderSessionServiceTestKit
+  OneOffHeaderSessionServiceTestKit,
+  RefreshableCookieSessionServiceTestKit,
+  RefreshableHeaderSessionServiceTestKit
 }
 import org.scalatest.Suite
 
@@ -24,4 +26,12 @@ trait OneOfCookieSessionBasicAccountRoutesTestKit
 
 trait OneOfHeaderSessionBasicAccountRoutesTestKit
     extends OneOffHeaderSessionServiceTestKit
+    with BasicAccountRoutesTestKit { _: Suite => }
+
+trait RefreshableCookieSessionBasicAccountRoutesTestKit
+    extends RefreshableCookieSessionServiceTestKit
+    with BasicAccountRoutesTestKit { _: Suite => }
+
+trait RefreshableHeaderSessionBasicAccountRoutesTestKit
+    extends RefreshableHeaderSessionServiceTestKit
     with BasicAccountRoutesTestKit { _: Suite => }

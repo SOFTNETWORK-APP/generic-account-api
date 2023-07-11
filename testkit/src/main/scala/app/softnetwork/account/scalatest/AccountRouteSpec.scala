@@ -304,6 +304,7 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
         typedSystem()
       ) ~> check {
         status shouldEqual StatusCodes.OK
+        httpHeaders = extractHeaders(headers)
       }
     }
   }
@@ -322,6 +323,7 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
       ) ~> check {
         status shouldEqual StatusCodes.OK
         responseAs[AccountView].status shouldEqual AccountStatus.Deleted
+        httpHeaders = extractHeaders(headers)
       }
     }
   }

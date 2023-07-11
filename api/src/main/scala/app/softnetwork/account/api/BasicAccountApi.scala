@@ -7,16 +7,15 @@ import app.softnetwork.account.model.{BasicAccount, BasicAccountProfile}
 import app.softnetwork.account.persistence.query.AccountEventProcessorStreams.InternalAccountEvents2AccountProcessorStream
 import app.softnetwork.account.persistence.typed.{AccountBehavior, BasicAccountBehavior}
 import app.softnetwork.account.service.{AccountService, BasicAccountService}
+import app.softnetwork.api.server.ApiRoutes
 import app.softnetwork.persistence.jdbc.query.{JdbcJournalProvider, JdbcOffsetProvider}
 import app.softnetwork.persistence.schema.SchemaProvider
 import com.typesafe.config.Config
 
 trait BasicAccountApi extends AccountApplication[BasicAccount, BasicAccountProfile] {
-  _: SchemaProvider =>
+  _: SchemaProvider with ApiRoutes =>
 
   override def accountDao: AccountDao = BasicAccountDao
-
-  override def accountService: ActorSystem[_] => AccountService = sys => BasicAccountService(sys)
 
   override def accountBehavior
     : ActorSystem[_] => AccountBehavior[BasicAccount, BasicAccountProfile] = _ =>

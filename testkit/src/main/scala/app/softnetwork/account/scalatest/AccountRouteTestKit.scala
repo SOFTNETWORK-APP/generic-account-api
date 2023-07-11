@@ -18,6 +18,12 @@ trait AccountRouteTestKit[
 ] extends SessionTestKit
     with AccountTestKit[T, P] { _: Suite with ApiRoutes =>
 
+  override def beforeAll(): Unit = {
+    super.beforeAll()
+    // pre load routes
+    apiRoutes(typedSystem())
+  }
+
   def signUp(
     login: String,
     password: String,

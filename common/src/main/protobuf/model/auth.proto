@@ -52,7 +52,6 @@ message DeviceRegistration {
     required app.softnetwork.notification.model.Platform platform = 2;
     optional string applicationId = 3;
     optional string deviceId = 4;
-    extensions 100 to max;
 }
 
 message BasicAccountProfile {
@@ -71,7 +70,6 @@ message BasicAccountProfile {
     optional string email = 9;
     optional string description = 10;
     optional string userName = 11;
-    extensions 100 to max;
 }
 
 message BasicAccountDetails {
@@ -86,7 +84,6 @@ message BasicAccountDetails {
     optional string phoneNumber = 6;
     optional string email = 7;
     optional string userName = 8;
-    extensions 100 to max;
 }
 
 message BasicAccount {
@@ -114,7 +111,6 @@ message BasicAccount {
     optional google.protobuf.Timestamp lastLogout = 17 [(scalapb.field).type = "java.time.Instant"];
     optional bool anonymous = 18;
     optional bool fromAnonymous = 19;
-    extensions 100 to max;
 }
 
 message ValidationError {

@@ -1,29 +1,25 @@
 package app.softnetwork.account.api
 
-import akka.actor
 import akka.actor.typed.ActorSystem
 import app.softnetwork.notification.api.AllNotificationsApi
-import app.softnetwork.persistence.jdbc.schema.{JdbcSchema, JdbcSchemaTypes}
+import app.softnetwork.persistence.jdbc.schema.{JdbcSchemaProvider, JdbcSchemaTypes}
 import app.softnetwork.persistence.launch.PersistentEntity
 import app.softnetwork.persistence.query.EventProcessorStream
-import app.softnetwork.persistence.schema.{Schema, SchemaProvider, SchemaType}
-import app.softnetwork.persistence.typed._
-import com.typesafe.config.Config
+import app.softnetwork.persistence.schema.SchemaType
+import app.softnetwork.session.service.SessionService
 import org.slf4j.{Logger, LoggerFactory}
 
-object BasicAccountWithNotificationsPostgresLauncher
+object BasicAccountRoutesWithNotificationsPostgresLauncher
     extends AllNotificationsApi
-    with BasicAccountApi
-    with SchemaProvider {
+    with BasicAccountRoutesApi
+    with JdbcSchemaProvider {
 
   lazy val log: Logger = LoggerFactory getLogger getClass.getName
 
-  override def schema: ActorSystem[_] => Schema = sys =>
-    new JdbcSchema {
-      override def schemaType: SchemaType = JdbcSchemaTypes.Postgres
-      override implicit def classicSystem: actor.ActorSystem = sys
-      override def config: Config = BasicAccountWithNotificationsPostgresLauncher.this.config
-    }
+  override def schemaType: SchemaType = JdbcSchemaTypes.Postgres
+
+  override def sessionService: ActorSystem[_] => SessionService = system =>
+    SessionService.oneOffCookie(system)
 
   /** initialize all entities
     */

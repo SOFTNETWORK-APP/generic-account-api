@@ -4,7 +4,6 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.{Directives, Route}
 import akka.http.scaladsl.server.directives.Credentials
 import akka.http.scaladsl.unmarshalling.Unmarshaller
-import app.softnetwork.persistence.service.Service
 import com.softwaremill.session.CsrfDirectives._
 import com.softwaremill.session.CsrfOptions._
 import com.typesafe.scalalogging.StrictLogging
@@ -13,7 +12,6 @@ import app.softnetwork.api.server._
 import app.softnetwork.concurrent.Completion.AwaitCompletion
 import app.softnetwork.persistence.typed.CommandTypeKey
 import app.softnetwork.account.config.AccountSettings
-import app.softnetwork.account.handlers.{AccountHandler, BasicAccountTypeKey}
 import app.softnetwork.account.message._
 import app.softnetwork.account.model._
 import app.softnetwork.account.serialization._
@@ -32,8 +30,7 @@ import app.softnetwork.persistence._
 /** Created by smanciot on 23/04/2020.
   */
 trait AccountService
-    extends Service[AccountCommand, AccountCommandResult]
-    with AccountHandler
+    extends BaseAccountService
     with Directives
     with DefaultComplete
     with Json4sSupport
@@ -442,12 +439,4 @@ trait AccountService
       case _ => None
     }
   }
-}
-
-trait BasicAccountService extends AccountService with BasicAccountTypeKey {
-  override type SU = BasicAccountSignUp
-
-  override implicit def toSignUp: SU => SignUp = identity
-
-  override def asSignUp: Unmarshaller[HttpRequest, SU] = as[BasicAccountSignUp]
 }
