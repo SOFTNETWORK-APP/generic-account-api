@@ -22,9 +22,7 @@ import org.json4s.{jackson, Formats}
 
 import scala.language.implicitConversions
 import scala.util.{Failure, Success}
-
 import Session._
-
 import app.softnetwork.persistence._
 
 /** Created by smanciot on 23/04/2020.
@@ -39,6 +37,14 @@ trait AccountService
   type SU
 
   def asSignUp: Unmarshaller[HttpRequest, SU]
+
+  type PV = DefaultProfileView
+
+  type DV = DefaultAccountDetailsView
+
+  type AV = DefaultAccountView[PV, DV]
+
+//  implicit def accountViewToResponseEntity: AV => ResponseEntity
 
   implicit def toSignUp: SU => SignUp
 
@@ -84,7 +90,9 @@ trait AccountService
               sessionService.setSession(session) {
                 // create a new anti csrf token
                 setNewCsrfToken(checkHeader) {
-                  complete(HttpResponse(status = StatusCodes.Created, entity = account.view))
+                  complete(
+                    HttpResponse(status = StatusCodes.Created, entity = account.view[PV, DV])
+                  )
                 }
               }
             case error: AccountErrorMessage =>
@@ -112,7 +120,7 @@ trait AccountService
             case r: AccountCreated =>
               val account = r.account
               lazy val completion =
-                complete(HttpResponse(status = StatusCodes.Created, entity = account.view))
+                complete(HttpResponse(status = StatusCodes.Created, entity = account.view[PV, DV]))
               if (!AccountSettings.ActivationEnabled) {
                 // create a new session
                 val session = Session(account.uuid)
@@ -146,7 +154,7 @@ trait AccountService
             sessionService.setSession(Session(account.uuid)) {
               // create a new anti csrf token
               setNewCsrfToken(checkHeader) {
-                complete(HttpResponse(StatusCodes.OK, entity = account.view))
+                complete(HttpResponse(StatusCodes.OK, entity = account.view[PV, DV]))
               }
             }
           case error: AccountErrorMessage =>
@@ -167,7 +175,7 @@ trait AccountService
         sessionService.setSession(session) {
           // create a new anti csrf token
           setNewCsrfToken(checkHeader) {
-            complete(HttpResponse(StatusCodes.OK, entity = account.view))
+            complete(HttpResponse(StatusCodes.OK, entity = account.view[PV, DV]))
           }
         }
       }
@@ -208,7 +216,7 @@ trait AccountService
               sessionService.setSession(session) {
                 // create a new anti csrf token
                 setNewCsrfToken(checkHeader) {
-                  complete(HttpResponse(StatusCodes.OK, entity = account.view))
+                  complete(HttpResponse(StatusCodes.OK, entity = account.view[PV, DV]))
                 }
               }
             case error: AccountErrorMessage =>
@@ -251,7 +259,7 @@ trait AccountService
             case r: AccountDeleted =>
               // invalidate session
               sessionService.invalidateSession {
-                complete(HttpResponse(status = StatusCodes.OK, entity = r.account.view))
+                complete(HttpResponse(status = StatusCodes.OK, entity = r.account.view[PV, DV]))
               }
             case error: AccountErrorMessage =>
               complete(HttpResponse(StatusCodes.BadRequest, entity = error))

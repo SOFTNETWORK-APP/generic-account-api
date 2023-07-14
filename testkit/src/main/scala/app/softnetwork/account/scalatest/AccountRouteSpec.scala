@@ -9,7 +9,9 @@ import app.softnetwork.account.model.{
   Account,
   AccountDecorator,
   AccountStatus,
-  AccountView,
+  DefaultAccountDetailsView,
+  DefaultAccountView,
+  DefaultProfileView,
   Profile,
   ProfileDecorator
 }
@@ -40,6 +42,12 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
 
   def profile: P
 
+  type PV = DefaultProfileView
+
+  type DV = DefaultAccountDetailsView
+
+  type AV = DefaultAccountView[PV, DV]
+
   "MainRoutes" should {
     "contain a healthcheck path" in {
       Get(s"/$RootPath/healthcheck") ~> routes ~> check {
@@ -52,7 +60,7 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
     "work" in {
       Post(s"/$RootPath/${AccountSettings.Path}/anonymous") ~> routes ~> check {
         status shouldEqual StatusCodes.Created
-        val account = responseAs[AccountView]
+        val account = responseAs[AV]
         account.status shouldBe AccountStatus.Active
         account.anonymous.getOrElse(false) shouldBe true
         httpHeaders = extractHeaders(headers)
@@ -69,7 +77,7 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
         )
       ) ~> routes ~> check {
         status shouldEqual StatusCodes.Created
-        val account = responseAs[AccountView]
+        val account = responseAs[AV]
         account.status shouldBe AccountStatus.Active
         account.anonymous.getOrElse(true) shouldBe false
         account.fromAnonymous.getOrElse(false) shouldBe true
@@ -90,7 +98,7 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
         implicitly[SignUp]((username, password, Some(profile)))
       ) ~> routes ~> check {
         status shouldEqual StatusCodes.Created
-        responseAs[AccountView].status shouldBe AccountStatus.Active
+        responseAs[AV].status shouldBe AccountStatus.Active
       }
     }
     "fail if username already exists" in {
@@ -110,7 +118,7 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
         implicitly[SignUp]((email, password, Some(profile)))
       ) ~> routes ~> check {
         status shouldEqual StatusCodes.Created
-        val account = responseAs[AccountView]
+        val account = responseAs[AV]
         if (AccountSettings.ActivationEnabled) {
           account.status shouldBe AccountStatus.Inactive
         } else {
@@ -135,7 +143,7 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
         implicitly[SignUp]((gsm, password, Some(profile)))
       ) ~> routes ~> check {
         status shouldEqual StatusCodes.Created
-        responseAs[AccountView].status shouldBe AccountStatus.Active
+        responseAs[AV].status shouldBe AccountStatus.Active
       }
     }
     "fail if gsm already exists" in {
@@ -160,7 +168,7 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
         typedSystem()
       ) ~> check {
         status shouldEqual StatusCodes.OK
-        responseAs[AccountView].status shouldBe AccountStatus.Active
+        responseAs[AV].status shouldBe AccountStatus.Active
       }
     }
   }
@@ -171,7 +179,7 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
         Post(s"/$RootPath/${AccountSettings.Path}/login", Login(username, password))
       ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
-        responseAs[AccountView].status shouldBe AccountStatus.Active
+        responseAs[AV].status shouldBe AccountStatus.Active
       }
     }
     "work with matching email and password" in {
@@ -185,7 +193,7 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
             typedSystem()
           ) ~> check {
             status shouldEqual StatusCodes.OK
-            responseAs[AccountView].status shouldBe AccountStatus.Active
+            responseAs[AV].status shouldBe AccountStatus.Active
           }
         case _ => fail()
       }
@@ -195,7 +203,7 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
         typedSystem()
       ) ~> check {
         status shouldEqual StatusCodes.OK
-        responseAs[AccountView].status shouldBe AccountStatus.Active
+        responseAs[AV].status shouldBe AccountStatus.Active
       }
     }
     "fail with unknown username" in {
@@ -322,7 +330,7 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
         typedSystem()
       ) ~> check {
         status shouldEqual StatusCodes.OK
-        responseAs[AccountView].status shouldEqual AccountStatus.Deleted
+        responseAs[AV].status shouldEqual AccountStatus.Deleted
         httpHeaders = extractHeaders(headers)
       }
     }

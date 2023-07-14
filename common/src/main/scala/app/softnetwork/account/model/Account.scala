@@ -57,27 +57,55 @@ trait AccountDetails extends Timestamped {
   def phoneNumber: Option[String]
   def email: Option[String]
   def userName: Option[String]
+  def view: AccountDetailsView = detailsView
+  def detailsView: AccountDetailsView =
+    DefaultAccountDetailsView(
+      firstName,
+      lastName,
+      phoneNumber,
+      email,
+      userName
+    )
 }
 
-case class AccountDetailsView(
+trait AccountDetailsView {
+  def firstName: String
+  def lastName: String
+  def phoneNumber: Option[String]
+  def email: Option[String]
+  def userName: Option[String]
+}
+
+case class DefaultAccountDetailsView(
   firstName: String,
   lastName: String,
   phoneNumber: Option[String],
   email: Option[String],
   userName: Option[String]
-)
+) extends AccountDetailsView
+
+trait AccountView[P <: ProfileView, D <: AccountDetailsView] {
+  def lastLogin: Option[Instant]
+  def status: AccountStatus
+  def createdDate: Instant
+  def lastUpdated: Instant
+  def currentProfile: Option[P]
+  def details: Option[D]
+  def anonymous: Option[Boolean]
+  def fromAnonymous: Option[Boolean]
+}
 
 @SerialVersionUID(0L)
-case class AccountView(
+case class DefaultAccountView[P <: ProfileView, D <: AccountDetailsView](
   lastLogin: Option[Instant],
   status: AccountStatus,
   createdDate: Instant,
   lastUpdated: Instant,
-  currentProfile: Option[ProfileView],
-  details: Option[AccountDetailsView],
+  currentProfile: Option[P],
+  details: Option[D],
   anonymous: Option[Boolean],
   fromAnonymous: Option[Boolean]
-)
+) extends AccountView[P, D]
 
 /** A collection of all principals associated with a corresponding Subject. A principal is just a
   * security term for an identifying attribute, such as a username or user id or social security
@@ -264,8 +292,16 @@ trait Profile extends AccountDetails with ProfileDecorator {
   def description: Option[String]
 }
 
+trait ProfileView extends AccountDetailsView {
+  def createdDate: Instant
+  def lastUpdated: Instant
+  def name: String
+  def `type`: ProfileType
+  def description: Option[String]
+}
+
 @SerialVersionUID(0L)
-case class ProfileView(
+case class DefaultProfileView(
   uuid: String,
   createdDate: Instant,
   lastUpdated: Instant,
@@ -277,7 +313,7 @@ case class ProfileView(
   name: String,
   `type`: ProfileType,
   description: Option[String]
-) extends AccountDetails {}
+) extends ProfileView
 
 trait AccountDecorator { account: Account =>
   def withPrincipal(principal: Principal): Account
@@ -331,22 +367,14 @@ trait AccountDecorator { account: Account =>
   def copyWithAnonymous(anonymous: Boolean): Account = withAnonymous(anonymous)
   def copyWithFromAnonymous(fromAnonymous: Boolean): Account = withFromAnonymous(fromAnonymous)
 
-  def view: AccountView =
-    AccountView(
+  def view[P <: ProfileView, D <: AccountDetailsView]: AccountView[P, D] =
+    DefaultAccountView(
       account.lastLogin,
       account.status,
       account.createdDate,
       account.lastUpdated,
-      account.currentProfile.map(_.view),
-      account.details.map(details =>
-        AccountDetailsView(
-          details.firstName,
-          details.lastName,
-          details.phoneNumber,
-          details.email,
-          details.userName
-        )
-      ),
+      account.currentProfile.map(_.profileView.asInstanceOf[P]),
+      account.details.map(_.detailsView.asInstanceOf[D]),
       account.anonymous,
       account.fromAnonymous
     )
@@ -393,8 +421,10 @@ trait ProfileDecorator { profile: Profile =>
     }
   }
 
-  def view: ProfileView =
-    ProfileView(
+  override def view: AccountDetailsView = profileView
+
+  def profileView: ProfileView =
+    DefaultProfileView(
       uuid = profile.uuid,
       createdDate = profile.createdDate,
       lastUpdated = profile.lastUpdated,

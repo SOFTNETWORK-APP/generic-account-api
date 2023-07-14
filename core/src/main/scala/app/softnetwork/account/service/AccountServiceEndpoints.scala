@@ -2,7 +2,12 @@ package app.softnetwork.account.service
 
 import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.message._
-import app.softnetwork.account.model.{AccountView, DeviceRegistration}
+import app.softnetwork.account.model.{
+  DefaultAccountDetailsView,
+  DefaultAccountView,
+  DefaultProfileView,
+  DeviceRegistration
+}
 import app.softnetwork.account.serialization.accountFormats
 import app.softnetwork.api.server.{ApiEndpoint, ApiErrors}
 import app.softnetwork.concurrent.Completion
@@ -67,6 +72,12 @@ trait AccountServiceEndpoints[SU]
     case _                          => ApiErrors.BadRequest("Unknown")
   }
 
+  type PV = DefaultProfileView
+
+  type DV = DefaultAccountDetailsView
+
+  type AV = DefaultAccountView[PV, DV]
+
   val anonymous: ServerEndpoint[Any with AkkaStreams, Future] =
     setNewCsrfToken(checkMode) {
       setSession(sc, st) {
@@ -75,7 +86,7 @@ trait AccountServiceEndpoints[SU]
         partial.endpoint
           .errorOut(errors)
           .out(
-            partial.securityOutput.and(jsonBody[AccountView]).and(statusCode(StatusCode.Created))
+            partial.securityOutput.and(jsonBody[AV]).and(statusCode(StatusCode.Created))
           )
           .serverSecurityLogicWithOutput(inputs =>
             partial.securityLogic(new FutureMonad())(inputs).map {
@@ -101,7 +112,7 @@ trait AccountServiceEndpoints[SU]
                         // create a new session
                         val session = Session(account.uuid)
                         session += (Session.anonymousKey, true)
-                        Right(((r._1, account.view), Some(session)))
+                        Right(((r._1, account.view.asInstanceOf[AV]), Some(session)))
 
                       case other => Left(error(other))
                     }
@@ -113,7 +124,7 @@ trait AccountServiceEndpoints[SU]
       }
     }.in(AccountSettings.Path / "anonymous")
       .post
-      .serverLogicSuccess(_ => _ => Future.successful(Right()))
+      .serverLogicSuccess(_ => _ => Future.successful(()))
 
   implicit def SUS: Schema[SU]
 
@@ -129,7 +140,7 @@ trait AccountServiceEndpoints[SU]
           .prependSecurityIn(jsonBody[SU])
           .errorOut(errors)
           .out(
-            partial.securityOutput.and(jsonBody[AccountView]).and(statusCode(StatusCode.Created))
+            partial.securityOutput.and(jsonBody[AV]).and(statusCode(StatusCode.Created))
           )
           .serverSecurityLogicWithOutput(inputs =>
             partial.securityLogic(new FutureMonad())(inputs._2).map {
@@ -158,9 +169,9 @@ trait AccountServiceEndpoints[SU]
                           // create a new session
                           val session = Session(account.uuid)
                           session += (Session.anonymousKey, false)
-                          Right((r._1, account.view), Some(session))
+                          Right((r._1, account.view.asInstanceOf[AV]), Some(session))
                         } else {
-                          Right(((r._1, account.view), maybeSession))
+                          Right(((r._1, account.view.asInstanceOf[AV]), maybeSession))
                         }
 
                       case other => Left(error(other))
@@ -173,7 +184,7 @@ trait AccountServiceEndpoints[SU]
       }
     }.in(AccountSettings.Path / "signUp")
       .post
-      .serverLogicSuccess(_ => _ => Future.successful(Right()))
+      .serverLogicSuccess(_ => _ => Future.successful(()))
   }
 
   val principal: ServerEndpoint[Any with AkkaStreams, Future] =
@@ -209,7 +220,7 @@ trait AccountServiceEndpoints[SU]
             auth.basic[UsernamePassword](WWWAuthenticateChallenge.basic(AccountSettings.Realm))
           )
           .errorOut(errors)
-          .out(jsonBody[AccountView])
+          .out(jsonBody[AV])
           .serverSecurityLogicWithOutput { up =>
             run(up.username, Login(up.username, up.password.getOrElse(""))).map {
               case r: LoginSucceededResult =>
@@ -218,7 +229,7 @@ trait AccountServiceEndpoints[SU]
                 val session = Session(account.uuid)
                 session += (Session.adminKey, account.isAdmin)
                 session += (Session.anonymousKey, false)
-                Right((account.view, Some(session)))
+                Right((account.view.asInstanceOf[AV], Some(session)))
               case other => Left(error(other))
             }
           }
@@ -232,7 +243,7 @@ trait AccountServiceEndpoints[SU]
     Option[Session],
     Unit,
     ApiErrors.ErrorInfo,
-    (((Seq[Option[String]], AccountView), Seq[Option[String]]), Option[CookieValueWithMeta]),
+    (((Seq[Option[String]], AV), Seq[Option[String]]), Option[CookieValueWithMeta]),
     Unit,
     Any,
     Future
@@ -244,7 +255,7 @@ trait AccountServiceEndpoints[SU]
         partial.endpoint
           .prependSecurityIn(jsonBody[Login])
           .errorOut(errors)
-          .out(partial.securityOutput.and(jsonBody[AccountView]))
+          .out(partial.securityOutput.and(jsonBody[AV]))
           .serverSecurityLogicWithOutput(inputs =>
             partial.securityLogic(new FutureMonad())(inputs._2).map {
 
@@ -284,7 +295,7 @@ trait AccountServiceEndpoints[SU]
                             session += (profileKey, profile.name)
                           case _ =>
                         }
-                        Right(((r._1, account.view), Some(session)))
+                        Right(((r._1, account.view.asInstanceOf[AV]), Some(session)))
 
                       case other => Left(error(other))
                     }
@@ -460,11 +471,11 @@ trait AccountServiceEndpoints[SU]
     }
       .in(AccountSettings.Path / "unsubscribe")
       .post
-      .out(jsonBody[AccountView])
+      .out(jsonBody[AV])
       .serverLogic(session =>
         _ =>
           run(session.id, Unsubscribe(session.id)).map {
-            case result: AccountDeleted => Right(result.account.view)
+            case result: AccountDeleted => Right(result.account.view.asInstanceOf[AV])
             case _                      => Left(())
           }
       )
@@ -486,7 +497,7 @@ trait AccountServiceEndpoints[SU]
             )
           ).map {
             case DeviceRegistered => Right(())
-            case other            => Left(())
+            case _                => Left(())
           }
       )
 
@@ -501,7 +512,7 @@ trait AccountServiceEndpoints[SU]
         regId =>
           run(session.id, UnregisterDevice(session.id, regId)).map {
             case DeviceUnregistered => Right(())
-            case other              => Left(())
+            case _                  => Left(())
           }
       )
   }
