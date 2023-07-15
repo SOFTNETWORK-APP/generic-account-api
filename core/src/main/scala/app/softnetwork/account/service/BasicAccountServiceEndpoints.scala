@@ -3,6 +3,11 @@ package app.softnetwork.account.service
 import akka.actor.typed.ActorSystem
 import app.softnetwork.account.handlers.BasicAccountTypeKey
 import app.softnetwork.account.message.{BasicAccountSignUp, SignUp}
+import app.softnetwork.account.model.{
+  DefaultAccountDetailsView,
+  DefaultAccountView,
+  DefaultProfileView
+}
 import app.softnetwork.session.service.SessionEndpoints
 import org.slf4j.{Logger, LoggerFactory}
 import sttp.tapir.generic.auto._
@@ -15,6 +20,14 @@ trait BasicAccountServiceEndpoints
   override implicit def toSignUp: BasicAccountSignUp => SignUp = identity
 
   override implicit val SUS: Schema[BasicAccountSignUp] = Schema.derived
+
+  override type PV = DefaultProfileView
+
+  override type DV = DefaultAccountDetailsView
+
+  override type AV = DefaultAccountView[PV, DV]
+
+  override implicit def AVSchema: Schema[AV] = Schema.derived
 }
 
 object BasicAccountServiceEndpoints {

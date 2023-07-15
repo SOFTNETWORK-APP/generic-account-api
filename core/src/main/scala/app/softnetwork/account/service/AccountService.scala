@@ -27,24 +27,16 @@ import app.softnetwork.persistence._
 
 /** Created by smanciot on 23/04/2020.
   */
-trait AccountService
+trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountView[PV, DV]]
     extends BaseAccountService
     with Directives
     with DefaultComplete
     with Json4sSupport
-    with StrictLogging { _: CommandTypeKey[AccountCommand] =>
+    with StrictLogging { _: CommandTypeKey[AccountCommand] with ManifestWrapper[AV] =>
 
   type SU
 
   def asSignUp: Unmarshaller[HttpRequest, SU]
-
-  type PV = DefaultProfileView
-
-  type DV = DefaultAccountDetailsView
-
-  type AV = DefaultAccountView[PV, DV]
-
-//  implicit def accountViewToResponseEntity: AV => ResponseEntity
 
   implicit def toSignUp: SU => SignUp
 
@@ -73,6 +65,7 @@ trait AccountService
   }
 
   lazy val anonymous: Route = path("anonymous") {
+    implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
     post {
       pathEnd {
         sessionService.optionalSession { maybeSession =>
@@ -91,7 +84,10 @@ trait AccountService
                 // create a new anti csrf token
                 setNewCsrfToken(checkHeader) {
                   complete(
-                    HttpResponse(status = StatusCodes.Created, entity = account.view[PV, DV])
+                    HttpResponse(
+                      status = StatusCodes.Created,
+                      entity = account.view.asInstanceOf[AV]
+                    )
                   )
                 }
               }
@@ -105,6 +101,7 @@ trait AccountService
   }
 
   lazy val signUp: Route = path("signUp") {
+    implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
     post {
       entity(asSignUp) { signUp =>
         sessionService.optionalSession { maybeSession =>
@@ -120,7 +117,9 @@ trait AccountService
             case r: AccountCreated =>
               val account = r.account
               lazy val completion =
-                complete(HttpResponse(status = StatusCodes.Created, entity = account.view[PV, DV]))
+                complete(
+                  HttpResponse(status = StatusCodes.Created, entity = account.view.asInstanceOf[AV])
+                )
               if (!AccountSettings.ActivationEnabled) {
                 // create a new session
                 val session = Session(account.uuid)
@@ -144,6 +143,7 @@ trait AccountService
   }
 
   lazy val activate: Route = path("activate") {
+    implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
     get {
       entity(as[Activate]) { activate =>
         // execute activate
@@ -154,7 +154,7 @@ trait AccountService
             sessionService.setSession(Session(account.uuid)) {
               // create a new anti csrf token
               setNewCsrfToken(checkHeader) {
-                complete(HttpResponse(StatusCodes.OK, entity = account.view[PV, DV]))
+                complete(HttpResponse(StatusCodes.OK, entity = account.view.asInstanceOf[AV]))
               }
             }
           case error: AccountErrorMessage =>
@@ -166,6 +166,7 @@ trait AccountService
   }
 
   lazy val basic: Route = path("basic") {
+    implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
     post {
       authenticateBasic(AccountSettings.Realm, BasicAuthAuthenticator) { account =>
         // create a new session
@@ -175,7 +176,7 @@ trait AccountService
         sessionService.setSession(session) {
           // create a new anti csrf token
           setNewCsrfToken(checkHeader) {
-            complete(HttpResponse(StatusCodes.OK, entity = account.view[PV, DV]))
+            complete(HttpResponse(StatusCodes.OK, entity = account.view.asInstanceOf[AV]))
           }
         }
       }
@@ -183,6 +184,7 @@ trait AccountService
   }
 
   lazy val login: Route = path("login" | "signIn") {
+    implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
     post {
       entity(as[Login]) { login =>
         sessionService.optionalSession { maybeSession =>
@@ -216,7 +218,7 @@ trait AccountService
               sessionService.setSession(session) {
                 // create a new anti csrf token
                 setNewCsrfToken(checkHeader) {
-                  complete(HttpResponse(StatusCodes.OK, entity = account.view[PV, DV]))
+                  complete(HttpResponse(StatusCodes.OK, entity = account.view.asInstanceOf[AV]))
                 }
               }
             case error: AccountErrorMessage =>
@@ -250,6 +252,7 @@ trait AccountService
   }
 
   lazy val unsubscribe: Route = path("unsubscribe") {
+    implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
     // check anti CSRF token
     hmacTokenCsrfProtection(checkHeader) {
       post {
@@ -259,7 +262,9 @@ trait AccountService
             case r: AccountDeleted =>
               // invalidate session
               sessionService.invalidateSession {
-                complete(HttpResponse(status = StatusCodes.OK, entity = r.account.view[PV, DV]))
+                complete(
+                  HttpResponse(status = StatusCodes.OK, entity = r.account.view.asInstanceOf[AV])
+                )
               }
             case error: AccountErrorMessage =>
               complete(HttpResponse(StatusCodes.BadRequest, entity = error))

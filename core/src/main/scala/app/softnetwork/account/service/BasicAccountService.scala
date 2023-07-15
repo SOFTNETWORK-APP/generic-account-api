@@ -8,7 +8,7 @@ import app.softnetwork.account.message.{BasicAccountSignUp, SignUp}
 import app.softnetwork.session.service.SessionService
 import org.slf4j.{Logger, LoggerFactory}
 
-trait BasicAccountService extends AccountService with BasicAccountTypeKey {
+trait BasicAccountService extends DefaultAccountService with BasicAccountTypeKey {
   override type SU = BasicAccountSignUp
 
   override implicit def toSignUp: SU => SignUp = identity
@@ -22,6 +22,7 @@ object BasicAccountService {
       lazy val log: Logger = LoggerFactory getLogger getClass.getName
       override implicit def system: ActorSystem[_] = asystem
       override def sessionService: SessionService = _sessionService
+      override protected lazy val manifestWrapper: ManifestW = ManifestW()
     }
   }
 }

@@ -13,10 +13,15 @@ import org.scalatest.wordspec.AnyWordSpecLike
 
 /** Created by smanciot on 18/04/2020.
   */
-trait AccountServiceSpec[T <: Account with AccountDecorator, P <: Profile with ProfileDecorator]
-    extends AccountService
+trait AccountServiceSpec[
+  T <: Account with AccountDecorator,
+  P <: Profile with ProfileDecorator,
+  PV <: ProfileView,
+  DV <: AccountDetailsView,
+  AV <: AccountView[PV, DV]
+] extends AccountService[PV, DV, AV]
     with AnyWordSpecLike
-    with AccountTestKit[T, P] { _: CommandTypeKey[AccountCommand] =>
+    with AccountTestKit[T, P] { _: CommandTypeKey[AccountCommand] with ManifestWrapper[AV] =>
 
   implicit lazy val system: ActorSystem[_] = typedSystem()
 

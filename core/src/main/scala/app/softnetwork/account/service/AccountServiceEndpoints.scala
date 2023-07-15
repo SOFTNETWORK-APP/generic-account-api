@@ -3,10 +3,11 @@ package app.softnetwork.account.service
 import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.message._
 import app.softnetwork.account.model.{
-  DefaultAccountDetailsView,
-  DefaultAccountView,
-  DefaultProfileView,
-  DeviceRegistration
+  AccountDetailsView,
+  AccountStatus,
+  AccountView,
+  DeviceRegistration,
+  ProfileView
 }
 import app.softnetwork.account.serialization.accountFormats
 import app.softnetwork.api.server.{ApiEndpoint, ApiErrors}
@@ -72,11 +73,19 @@ trait AccountServiceEndpoints[SU]
     case _                          => ApiErrors.BadRequest("Unknown")
   }
 
-  type PV = DefaultProfileView
+  type PV <: ProfileView
 
-  type DV = DefaultAccountDetailsView
+  type DV <: AccountDetailsView
 
-  type AV = DefaultAccountView[PV, DV]
+  type AV <: AccountView[PV, DV]
+
+  val manifest: Manifest[AV] = implicitly[Manifest[AV]]
+
+  implicit def AVManifest: Manifest[AV] = manifest
+
+  implicit def ASS: Schema[AccountStatus] = Schema.derived
+
+  implicit def AVSchema: Schema[AV]
 
   val anonymous: ServerEndpoint[Any with AkkaStreams, Future] =
     setNewCsrfToken(checkMode) {

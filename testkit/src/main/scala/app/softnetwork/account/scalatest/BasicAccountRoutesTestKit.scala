@@ -1,7 +1,13 @@
 package app.softnetwork.account.scalatest
 
 import akka.actor.typed.ActorSystem
-import app.softnetwork.account.model.{BasicAccount, BasicAccountProfile}
+import app.softnetwork.account.model.{
+  BasicAccount,
+  BasicAccountProfile,
+  DefaultAccountDetailsView,
+  DefaultAccountView,
+  DefaultProfileView
+}
 import app.softnetwork.account.service.{AccountService, MockBasicAccountService}
 import app.softnetwork.persistence.schema.SchemaProvider
 import app.softnetwork.session.scalatest.{
@@ -12,11 +18,21 @@ import app.softnetwork.session.scalatest.{
 }
 import org.scalatest.Suite
 
-trait BasicAccountRoutesTestKit extends AccountRoutesTestKit[BasicAccount, BasicAccountProfile] {
+trait BasicAccountRoutesTestKit
+    extends AccountRoutesTestKit[
+      BasicAccount,
+      BasicAccountProfile,
+      DefaultProfileView,
+      DefaultAccountDetailsView,
+      DefaultAccountView[DefaultProfileView, DefaultAccountDetailsView]
+    ] {
   _: SchemaProvider =>
 
-  override def accountService: ActorSystem[_] => AccountService = system =>
-    MockBasicAccountService(system, sessionService(system))
+  override def accountService: ActorSystem[_] => AccountService[
+    DefaultProfileView,
+    DefaultAccountDetailsView,
+    DefaultAccountView[DefaultProfileView, DefaultAccountDetailsView]
+  ] = system => MockBasicAccountService(system, sessionService(system))
 
 }
 
