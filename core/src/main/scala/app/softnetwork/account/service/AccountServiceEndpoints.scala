@@ -432,7 +432,7 @@ trait AccountServiceEndpoints[SU]
       .errorOut(errors)
       .get
       .serverLogic(token =>
-        partial.securityLogic(new FutureMonad())().map {
+        partial.securityLogic(new FutureMonad())(()).map {
           case Left(_) => Left(ApiErrors.Unauthorized("Unauthorized"))
           case Right(r) =>
             run(
