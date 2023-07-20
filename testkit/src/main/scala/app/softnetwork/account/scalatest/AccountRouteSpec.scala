@@ -32,19 +32,19 @@ trait AccountRouteSpec[
 ] extends AnyWordSpecLike
     with AccountRouteTestKit[T, P] { _: ApiRoutes with ManifestWrapper[AV] =>
 
-  private val anonymous = "anonymous"
+  protected val anonymous = "anonymous"
 
-  private val username = "smanciot"
+  protected val username = "smanciot"
 
-  private val firstName = Some("Stephane")
+  protected val firstName = Some("Stephane")
 
-  private val lastName = Some("Manciot")
+  protected val lastName = Some("Manciot")
 
-  private val email = "stephane.manciot@gmail.com"
+  protected val email = "stephane.manciot@gmail.com"
 
-  private val gsm = "33660010203"
+  protected val gsm = "33660010203"
 
-  private val password = "Changeit1"
+  protected val password = "Changeit1"
 
   def profile: P
 
