@@ -1,6 +1,13 @@
 package app.softnetwork.account.service
 
-import app.softnetwork.account.model.{BasicAccount, BasicAccountProfile, ProfileType}
+import app.softnetwork.account.model.{
+  BasicAccount,
+  BasicAccountProfile,
+  DefaultAccountDetailsView,
+  DefaultAccountView,
+  DefaultProfileView,
+  ProfileType
+}
 import app.softnetwork.account.scalatest.{
   AccountRouteSpec,
   BasicAccountRouteTestKit,
@@ -14,13 +21,24 @@ import app.softnetwork.account.scalatest.{
   RefreshableHeaderSessionBasicAccountRoutesTestKit
 }
 import app.softnetwork.api.server.ApiRoutes
+import app.softnetwork.persistence.ManifestWrapper
 import org.slf4j.{Logger, LoggerFactory}
 
 /** Created by smanciot on 22/03/2018.
   */
 trait BasicAccountRouteSpec
-    extends AccountRouteSpec[BasicAccount, BasicAccountProfile]
-    with BasicAccountRouteTestKit { _: ApiRoutes =>
+    extends AccountRouteSpec[
+      BasicAccount,
+      BasicAccountProfile,
+      DefaultProfileView,
+      DefaultAccountDetailsView,
+      DefaultAccountView[DefaultProfileView, DefaultAccountDetailsView]
+    ]
+    with BasicAccountRouteTestKit
+    with ManifestWrapper[DefaultAccountView[DefaultProfileView, DefaultAccountDetailsView]] {
+  _: ApiRoutes =>
+
+  override protected val manifestWrapper: ManifestW = ManifestW()
 
   lazy val log: Logger = LoggerFactory getLogger getClass.getName
   override val profile: BasicAccountProfile =

@@ -8,23 +8,29 @@ import app.softnetwork.account.message._
 import app.softnetwork.account.model.{
   Account,
   AccountDecorator,
+  AccountDetailsView,
   AccountStatus,
-  DefaultAccountDetailsView,
-  DefaultAccountView,
-  DefaultProfileView,
+  AccountView,
   Profile,
-  ProfileDecorator
+  ProfileDecorator,
+  ProfileView
 }
 import app.softnetwork.api.server.ApiRoutes
 import app.softnetwork.api.server.config.ServerSettings._
+import app.softnetwork.persistence.ManifestWrapper
 import app.softnetwork.serialization._
 import org.scalatest.wordspec.AnyWordSpecLike
 
 /** Created by smanciot on 22/03/2018.
   */
-trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with ProfileDecorator]
-    extends AnyWordSpecLike
-    with AccountRouteTestKit[T, P] { _: ApiRoutes =>
+trait AccountRouteSpec[
+  T <: Account with AccountDecorator,
+  P <: Profile with ProfileDecorator,
+  PV <: ProfileView,
+  DV <: AccountDetailsView,
+  AV <: AccountView[PV, DV]
+] extends AnyWordSpecLike
+    with AccountRouteTestKit[T, P] { _: ApiRoutes with ManifestWrapper[AV] =>
 
   private val anonymous = "anonymous"
 
@@ -42,12 +48,6 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
 
   def profile: P
 
-  type PV = DefaultProfileView
-
-  type DV = DefaultAccountDetailsView
-
-  type AV = DefaultAccountView[PV, DV]
-
   "MainRoutes" should {
     "contain a healthcheck path" in {
       Get(s"/$RootPath/healthcheck") ~> routes ~> check {
@@ -58,6 +58,7 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
 
   "Anonymous SignUp" should {
     "work" in {
+      implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
       Post(s"/$RootPath/${AccountSettings.Path}/anonymous") ~> routes ~> check {
         status shouldEqual StatusCodes.Created
         val account = responseAs[AV]
@@ -70,6 +71,7 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
 
   "SignUp" should {
     "work with anonymous account" in {
+      implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
       withHeaders(
         Post(
           s"/$RootPath/${AccountSettings.Path}/signUp",
@@ -93,6 +95,7 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
       }
     }
     "work with username" in {
+      implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
       Post(
         s"/$RootPath/${AccountSettings.Path}/signUp",
         implicitly[SignUp]((username, password, Some(profile)))
@@ -113,6 +116,7 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
       }
     }
     "work with email" in {
+      implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
       Post(
         s"/$RootPath/${AccountSettings.Path}/signUp",
         implicitly[SignUp]((email, password, Some(profile)))
@@ -138,6 +142,7 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
       }
     }
     "work with gsm" in {
+      implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
       Post(
         s"/$RootPath/${AccountSettings.Path}/signUp",
         implicitly[SignUp]((gsm, password, Some(profile)))
@@ -161,6 +166,7 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
 
   "basic" should {
     "work with matching username and password" in {
+      implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
       val validCredentials = BasicHttpCredentials(username, password)
       Post(s"/$RootPath/${AccountSettings.Path}/basic") ~> addCredentials(
         validCredentials
@@ -175,6 +181,7 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
 
   "Login" should {
     "work with matching username and password within an anonymous session" in {
+      implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
       withHeaders(
         Post(s"/$RootPath/${AccountSettings.Path}/login", Login(username, password))
       ) ~> routes ~> check {
@@ -183,6 +190,7 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
       }
     }
     "work with matching email and password" in {
+      implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
       AccountKeyDao.lookupAccount(email)(typedSystem()) await {
         case Some(uuid) =>
           Get(
@@ -199,6 +207,7 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
       }
     }
     "work with matching gsm and password" in {
+      implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
       Post(s"/$RootPath/${AccountSettings.Path}/login", Login(gsm, password)) ~> mainRoutes(
         typedSystem()
       ) ~> check {
@@ -319,6 +328,7 @@ trait AccountRouteSpec[T <: Account with AccountDecorator, P <: Profile with Pro
 
   "Unsubscribe" should {
     "work" in {
+      implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
       Post(
         s"/$RootPath/${AccountSettings.Path}/login",
         Login(gsm, password, refreshable = true)
