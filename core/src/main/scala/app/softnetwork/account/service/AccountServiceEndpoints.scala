@@ -10,28 +10,19 @@ import app.softnetwork.account.model.{
   ProfileView
 }
 import app.softnetwork.account.serialization.accountFormats
-import app.softnetwork.api.server.{ApiEndpoint, ApiErrors}
-import app.softnetwork.concurrent.Completion
+import app.softnetwork.api.server.ApiErrors
 import app.softnetwork.persistence.{generateUUID, ManifestWrapper}
 import app.softnetwork.persistence.typed.CommandTypeKey
-import app.softnetwork.session.service.SessionEndpoints
-import com.softwaremill.session.{
-  GetSessionTransport,
-  SetSessionTransport,
-  TapirCsrfCheckMode,
-  TapirEndpoints,
-  TapirSessionContinuity
-}
+import app.softnetwork.session.service.ServiceWithSessionEndpoints
 import org.json4s.Formats
 import org.softnetwork.session.model.Session
 import org.softnetwork.session.model.Session.profileKey
 import sttp.capabilities
 import sttp.capabilities.akka.AkkaStreams
 import sttp.model.headers.{CookieValueWithMeta, WWWAuthenticateChallenge}
-import sttp.model.{Method, StatusCode}
+import sttp.model.StatusCode
 import sttp.monad.FutureMonad
 import sttp.tapir._
-import sttp.tapir.generic.auto._
 import sttp.tapir.json.json4s.jsonBody
 import sttp.tapir.model.UsernamePassword
 import sttp.tapir.server.{PartialServerEndpointWithSecurityOutput, ServerEndpoint}
@@ -42,9 +33,7 @@ import scala.util.{Failure, Success}
 
 trait AccountServiceEndpoints[SU]
     extends BaseAccountService
-    with ApiEndpoint
-    with TapirEndpoints
-    with Completion
+    with ServiceWithSessionEndpoints[AccountCommand, AccountCommandResult]
     with ManifestWrapper[SU] {
   _: CommandTypeKey[AccountCommand] =>
 
@@ -52,26 +41,17 @@ trait AccountServiceEndpoints[SU]
 
   override implicit def formats: Formats = accountFormats
 
-  def sessionEndpoints: SessionEndpoints
-
-  def sc: TapirSessionContinuity[Session] = sessionEndpoints.sc
-
-  def st: SetSessionTransport = sessionEndpoints.st
-
-  def gt: GetSessionTransport = sessionEndpoints.gt
-
-  def checkMode: TapirCsrfCheckMode[Session] = sessionEndpoints.checkMode
-
-  def error(e: AccountCommandResult): ApiErrors.ErrorInfo = e match {
-    case LoginAndPasswordNotMatched => ApiErrors.Unauthorized(LoginAndPasswordNotMatched)
-    case AccountDisabled            => ApiErrors.Unauthorized(AccountDisabled)
-    case AccountNotFound            => ApiErrors.NotFound(AccountNotFound)
-    case ProfileNotFound            => ApiErrors.NotFound(ProfileNotFound)
-    case TokenNotFound              => ApiErrors.NotFound(TokenNotFound)
-    case CodeNotFound               => ApiErrors.NotFound(CodeNotFound)
-    case r: AccountErrorMessage     => ApiErrors.BadRequest(r.message)
-    case _                          => ApiErrors.BadRequest("Unknown")
-  }
+  override implicit def resultToApiError(result: AccountCommandResult): ApiErrors.ErrorInfo =
+    result match {
+      case LoginAndPasswordNotMatched => ApiErrors.Unauthorized(LoginAndPasswordNotMatched)
+      case AccountDisabled            => ApiErrors.Unauthorized(AccountDisabled)
+      case AccountNotFound            => ApiErrors.NotFound(AccountNotFound)
+      case ProfileNotFound            => ApiErrors.NotFound(ProfileNotFound)
+      case TokenNotFound              => ApiErrors.NotFound(TokenNotFound)
+      case CodeNotFound               => ApiErrors.NotFound(CodeNotFound)
+      case r: AccountErrorMessage     => ApiErrors.BadRequest(r.message)
+      case _                          => ApiErrors.BadRequest("Unknown")
+    }
 
   type PV <: ProfileView
 
@@ -90,10 +70,10 @@ trait AccountServiceEndpoints[SU]
   val anonymous: ServerEndpoint[Any with AkkaStreams, Future] =
     setNewCsrfToken(checkMode) {
       setSession(sc, st) {
-        val partial = optionalSession(sc, st)
+        val partial = optionalSession(sc, gt)
 
         partial.endpoint
-          .errorOut(errors)
+          .errorOut(ApiErrors.oneOfApiErrors)
           .out(
             partial.securityOutput.and(jsonBody[AV]).and(statusCode(StatusCode.Created))
           )
@@ -123,7 +103,7 @@ trait AccountServiceEndpoints[SU]
                         session += (Session.anonymousKey, true)
                         Right(((r._1, account.view.asInstanceOf[AV]), Some(session)))
 
-                      case other => Left(error(other))
+                      case other => Left(resultToApiError(other))
                     }
 
                   case Failure(_) => Left(ApiErrors.InternalServerError("InternalServerError"))
@@ -131,7 +111,8 @@ trait AccountServiceEndpoints[SU]
             }
           )
       }
-    }.in(AccountSettings.Path / "anonymous")
+    }
+      .in(AccountSettings.Path / "anonymous")
       .post
       .serverLogicSuccess(_ => _ => Future.successful(()))
 
@@ -143,11 +124,11 @@ trait AccountServiceEndpoints[SU]
     implicit val manifest: Manifest[SU] = manifestWrapper.wrapped
     setNewCsrfToken(checkMode) {
       setSession(sc, st) {
-        val partial = optionalSession(sc, st)
+        val partial = optionalSession(sc, gt)
 
         partial.endpoint
           .prependSecurityIn(jsonBody[SU])
-          .errorOut(errors)
+          .errorOut(ApiErrors.oneOfApiErrors)
           .out(
             partial.securityOutput.and(jsonBody[AV]).and(statusCode(StatusCode.Created))
           )
@@ -183,7 +164,7 @@ trait AccountServiceEndpoints[SU]
                           Right(((r._1, account.view.asInstanceOf[AV]), maybeSession))
                         }
 
-                      case other => Left(error(other))
+                      case other => Left(resultToApiError(other))
                     }
 
                   case Failure(_) => Left(ApiErrors.InternalServerError("InternalServerError"))
@@ -191,7 +172,8 @@ trait AccountServiceEndpoints[SU]
             }
           )
       }
-    }.in(AccountSettings.Path / "signUp")
+    }
+      .in(AccountSettings.Path / "signUp")
       .post
       .serverLogicSuccess(_ => _ => Future.successful(()))
   }
@@ -199,11 +181,11 @@ trait AccountServiceEndpoints[SU]
   val principal: ServerEndpoint[Any with AkkaStreams, Future] =
     hmacTokenCsrfProtection(checkMode) {
       val partial =
-        requiredSession(sc, st)
+        requiredSession(sc, gt)
       partial.endpoint
         .securityIn(jsonBody[UpdateLogin])
         .out(partial.securityOutput)
-        .errorOut(errors)
+        .errorOut(ApiErrors.oneOfApiErrors)
         .serverSecurityLogicWithOutput { inputs =>
           partial.securityLogic(new FutureMonad())(inputs._1).flatMap {
             case Left(_) => Future.successful(Left(ApiErrors.Unauthorized("Unauthorized")))
@@ -212,7 +194,7 @@ trait AccountServiceEndpoints[SU]
               val login = inputs._2
               run(session.id, login).map {
                 case LoginUpdated => Right(r._1, session)
-                case other        => Left(error(other))
+                case other        => Left(resultToApiError(other))
               }
           }
         }
@@ -228,7 +210,7 @@ trait AccountServiceEndpoints[SU]
           .securityIn(
             auth.basic[UsernamePassword](WWWAuthenticateChallenge.basic(AccountSettings.Realm))
           )
-          .errorOut(errors)
+          .errorOut(ApiErrors.oneOfApiErrors)
           .out(jsonBody[AV])
           .serverSecurityLogicWithOutput { up =>
             run(up.username, Login(up.username, up.password.getOrElse(""))).map {
@@ -239,11 +221,12 @@ trait AccountServiceEndpoints[SU]
                 session += (Session.adminKey, account.isAdmin)
                 session += (Session.anonymousKey, false)
                 Right((account.view.asInstanceOf[AV], Some(session)))
-              case other => Left(error(other))
+              case other => Left(resultToApiError(other))
             }
           }
       }
-    }.in(AccountSettings.Path / "basic")
+    }
+      .in(AccountSettings.Path / "basic")
       .post
       .serverLogicSuccess(_ => _ => Future.successful(()))
 
@@ -259,16 +242,15 @@ trait AccountServiceEndpoints[SU]
   ] =
     setNewCsrfToken(checkMode) {
       setSession(sc, st) {
-        val partial = optionalSession(sc, st)
-
+        val partial = optionalSession(sc, gt)
         partial.endpoint
           .prependSecurityIn(jsonBody[Login])
-          .errorOut(errors)
+          .errorOut(ApiErrors.oneOfApiErrors)
           .out(partial.securityOutput.and(jsonBody[AV]))
           .serverSecurityLogicWithOutput(inputs =>
             partial.securityLogic(new FutureMonad())(inputs._2).map {
 
-              case Left(_) => Left(ApiErrors.BadRequest(""))
+              case Left(_) => Left(ApiErrors.BadRequest("Unknown"))
 
               case Right(r) =>
                 val login: Login = inputs._1
@@ -306,7 +288,7 @@ trait AccountServiceEndpoints[SU]
                         }
                         Right(((r._1, account.view.asInstanceOf[AV]), Some(session)))
 
-                      case other => Left(error(other))
+                      case other => Left(resultToApiError(other))
                     }
 
                   case Failure(_) => Left(ApiErrors.InternalServerError("InternalServerError"))
@@ -314,7 +296,9 @@ trait AccountServiceEndpoints[SU]
             }
           )
       }
-    }.in(AccountSettings.Path).post
+    }
+      .in(AccountSettings.Path)
+      .post
 
   val login: ServerEndpoint[Any with AkkaStreams, Future] =
     loginEndpoint.in("login").serverLogicSuccess(_ => _ => Future.successful(()))
@@ -327,14 +311,14 @@ trait AccountServiceEndpoints[SU]
       setSession(sc, st) {
         endpoint
           .securityIn(jsonBody[Activate])
-          .errorOut(errors)
+          .errorOut(ApiErrors.oneOfApiErrors)
           .serverSecurityLogicWithOutput(activate =>
             run(activate.token, activate).map {
               case r: AccountActivated =>
                 val account = r.account
                 // create a new session
                 Right((), Some(Session(account.uuid)))
-              case other => Left(error(other))
+              case other => Left(resultToApiError(other))
             }
           )
       }
@@ -343,119 +327,92 @@ trait AccountServiceEndpoints[SU]
       .get
       .serverLogicSuccess(_ => _ => Future.successful(()))
 
-  val logoutEndpoint: PartialServerEndpointWithSecurityOutput[
-    ((Seq[Option[String]], Seq[Option[String]]), Option[String], Method, Option[String]),
-    Session,
-    Unit,
-    _,
-    (Seq[Option[String]], Option[CookieValueWithMeta]),
-    Unit,
-    Any,
-    Future
-  ] = {
-    val partial =
-      hmacTokenCsrfProtection(checkMode) {
+  def logoutEndpoint(suffix: String): ServerEndpoint[Any with AkkaStreams, Future] =
+    ApiErrors
+      .withApiErrorVariants(
         invalidateSession(sc, gt) {
-          requiredSession(sc, st)
+          antiCsrfWithRequiredSession(sc, gt, checkMode)
         }
-      }
-    partial.endpoint
-      .out(partial.securityOutput)
-      .errorOut(errors)
-      .serverSecurityLogicWithOutput { inputs =>
-        partial.securityLogic(new FutureMonad())(inputs).flatMap {
-          case Left(_) => Future.successful(Left(ApiErrors.Unauthorized("Unauthorized")))
-          case Right(r) =>
-            val session = r._2
-            run(session.id, Logout).map {
-              case LogoutSucceeded => Right(r._1, session)
-              case other           => Left(error(other))
-            }
+      )
+      .in(AccountSettings.Path / suffix)
+      .serverLogic(session =>
+        _ => {
+          run(session.id, Logout).map {
+            case LogoutSucceeded => Right(())
+            case other           => Left(resultToApiError(other))
+          }
         }
-      }
-  }
+      )
 
-  val logout: ServerEndpoint[Any with AkkaStreams, Future] =
-    logoutEndpoint
-      .in(AccountSettings.Path / "logout")
-      .serverLogicSuccess(_ => _ => Future.successful(()))
+  val logout: ServerEndpoint[Any with AkkaStreams, Future] = logoutEndpoint("logout")
 
-  val signOut: ServerEndpoint[Any with AkkaStreams, Future] =
-    logoutEndpoint
-      .in(AccountSettings.Path / "signOut")
-      .serverLogicSuccess(_ => _ => Future.successful(()))
+  val signOut: ServerEndpoint[Any with AkkaStreams, Future] = logoutEndpoint("signOut")
 
   val sendVerificationCode: ServerEndpoint[Any with AkkaStreams, Future] =
-    setNewCsrfToken(checkMode) {
-      endpoint
-        .securityIn(jsonBody[SendVerificationCode])
-        .errorOut(errors)
-        .serverSecurityLogicWithOutput { verificationCode =>
+    ApiErrors
+      .withApiErrorVariants(
+        setNewCsrfToken(checkMode) {
+          endpoint.serverSecurityLogicSuccessWithOutput(_ => Future.successful(((), ())))
+        }
+      )
+      .in(AccountSettings.Path / "verificationCode")
+      .in(jsonBody[SendVerificationCode])
+      .post
+      .serverLogic(_ =>
+        verificationCode => {
           run(
             verificationCode.principal,
             verificationCode
           ).map {
-            case VerificationCodeSent => Right((), ())
-            case other                => Left(error(other))
+            case VerificationCodeSent => Right(())
+            case other                => Left(resultToApiError(other))
           }
         }
-    }
-      .in(AccountSettings.Path / "verificationCode")
-      .post
-      .serverLogicSuccess(_ => _ => Future.successful(()))
+      )
 
   val sendResetPasswordToken: ServerEndpoint[Any with AkkaStreams, Future] =
     endpoint
       .in(AccountSettings.Path / "resetPasswordToken")
       .post
       .in(jsonBody[SendResetPasswordToken])
-      .errorOut(errors)
+      .errorOut(ApiErrors.oneOfApiErrors)
       .serverLogic { resetPasswordToken =>
         run(
           resetPasswordToken.principal,
           resetPasswordToken
         ).map {
           case ResetPasswordTokenSent => Right(())
-          case other                  => Left(error(other))
+          case other                  => Left(resultToApiError(other))
         }
       }
 
-  val checkResetPasswordToken: ServerEndpoint[Any with AkkaStreams, Future] = {
-    val partial =
-      setNewCsrfToken(checkMode) {
-        endpoint.serverSecurityLogicSuccessWithOutput(_ => Future.successful(((), ())))
-      }
-    partial.endpoint
-      .in(AccountSettings.Path / "resetPasswordToken")
-      .in(path[String])
-      .out(partial.securityOutput)
-      .errorOut(errors)
-      .get
-      .serverLogic(token =>
-        partial.securityLogic(new FutureMonad())(()).map {
-          case Left(_) => Left(ApiErrors.Unauthorized("Unauthorized"))
-          case Right(r) =>
-            run(
-              token,
-              CheckResetPasswordToken(token)
-            ) complete () match {
-              case Success(value) =>
-                value match {
-                  case ResetPasswordTokenChecked => Right(r._1)
-                  case other                     => Left(error(other))
-                }
-              case Failure(_) => Left(ApiErrors.InternalServerError("InternalServerError"))
-            }
+  val checkResetPasswordToken: ServerEndpoint[Any with AkkaStreams, Future] =
+    ApiErrors
+      .withApiErrorVariants(
+        setNewCsrfToken(checkMode) {
+          endpoint.serverSecurityLogicSuccessWithOutput(_ => Future.successful(((), ())))
         }
       )
-  }
+      .in(AccountSettings.Path / "resetPasswordToken")
+      .in(path[String])
+      .get
+      .serverLogic(_ =>
+        token =>
+          run(
+            token,
+            CheckResetPasswordToken(token)
+          ).map {
+            case ResetPasswordTokenChecked => Right(())
+            case other                     => Left(resultToApiError(other))
+          }
+      )
 
-  val resetPassword: ServerEndpoint[Any with AkkaStreams, Future] =
+  val resetPassword: ServerEndpoint[Any with AkkaStreams, Future] = {
     hmacTokenCsrfProtection(checkMode) {
       setSession(sc, st) {
         endpoint
           .securityIn(jsonBody[ResetPassword])
-          .errorOut(errors)
+          .errorOut(ApiErrors.oneOfApiErrors)
           .serverSecurityLogicWithOutput { reset =>
             run(reset.token, reset).map {
               case r: PasswordReseted =>
@@ -463,7 +420,7 @@ trait AccountServiceEndpoints[SU]
                 val session = Session(r.uuid)
                 session += (Session.anonymousKey, false)
                 Right((), Some(session))
-              case other => Left(error(other))
+              case other => Left(resultToApiError(other))
             }
           }
       }
@@ -471,13 +428,15 @@ trait AccountServiceEndpoints[SU]
       .in(AccountSettings.Path / "resetPassword")
       .post
       .serverLogicSuccess(_ => _ => Future.successful(()))
+  }
 
   val unsubscribe: ServerEndpoint[Any with AkkaStreams, Future] =
-    hmacTokenCsrfProtection(checkMode) {
-      invalidateSession(sc, st) {
-        requiredSession(sc, st)
-      }
-    }
+    ApiErrors
+      .withApiErrorVariants(
+        invalidateSession(sc, gt) {
+          antiCsrfWithRequiredSession(sc, gt, checkMode)
+        }
+      )
       .in(AccountSettings.Path / "unsubscribe")
       .post
       .out(jsonBody[AV])
@@ -485,14 +444,15 @@ trait AccountServiceEndpoints[SU]
         _ =>
           run(session.id, Unsubscribe(session.id)).map {
             case result: AccountDeleted => Right(result.account.view.asInstanceOf[AV])
-            case _                      => Left(())
+            case other                  => Left(resultToApiError(other))
           }
       )
 
   val registerDevice: ServerEndpoint[Any with AkkaStreams, Future] =
-    hmacTokenCsrfProtection(checkMode) {
-      requiredSession(sc, st)
-    }
+    ApiErrors
+      .withApiErrorVariants(
+        antiCsrfWithRequiredSession(sc, gt, checkMode)
+      )
       .in(AccountSettings.Path / "device")
       .in(jsonBody[DeviceRegistration])
       .post
@@ -506,14 +466,15 @@ trait AccountServiceEndpoints[SU]
             )
           ).map {
             case DeviceRegistered => Right(())
-            case _                => Left(())
+            case other            => Left(resultToApiError(other))
           }
       )
 
   val unregisterDevice: ServerEndpoint[Any with AkkaStreams, Future] = {
-    hmacTokenCsrfProtection(checkMode) {
-      requiredSession(sc, st)
-    }
+    ApiErrors
+      .withApiErrorVariants(
+        antiCsrfWithRequiredSession(sc, gt, checkMode)
+      )
       .in(AccountSettings.Path / "device")
       .in(path[String])
       .delete
@@ -521,15 +482,16 @@ trait AccountServiceEndpoints[SU]
         regId =>
           run(session.id, UnregisterDevice(session.id, regId)).map {
             case DeviceUnregistered => Right(())
-            case _                  => Left(())
+            case other              => Left(resultToApiError(other))
           }
       )
   }
 
-  val updatePassword: ServerEndpoint[Any with AkkaStreams, Future] =
-    hmacTokenCsrfProtection(checkMode) {
-      requiredSession(sc, st)
-    }
+  val updatePassword: ServerEndpoint[Any with AkkaStreams, Future] = {
+    ApiErrors
+      .withApiErrorVariants(
+        antiCsrfWithRequiredSession(sc, gt, checkMode)
+      )
       .in(AccountSettings.Path / "password")
       .in(jsonBody[PasswordData])
       .post
@@ -541,10 +503,11 @@ trait AccountServiceEndpoints[SU]
             UpdatePassword(session.id, oldPassword, newPassword, confirmedPassword)
           ).map {
             case _: PasswordUpdated => Right(((), session))
-            case other              => Left(error(other))
+            case other              => Left(resultToApiError(other))
           }
         }
       )
+  }
 
   override lazy val endpoints
     : List[ServerEndpoint[AkkaStreams with capabilities.WebSockets, Future]] =
