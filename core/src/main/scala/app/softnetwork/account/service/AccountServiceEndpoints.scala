@@ -101,7 +101,15 @@ trait AccountServiceEndpoints[SU]
                         // create a new session
                         val session = Session(account.uuid)
                         session += (Session.anonymousKey, true)
-                        Right(((r._1, account.view.asInstanceOf[AV]), Some(session)))
+                        Right(
+                          (
+                            (
+                              r._1.map(_ => None) /*akka-http-session bug ?*/,
+                              account.view.asInstanceOf[AV]
+                            ),
+                            Some(session)
+                          )
+                        )
 
                       case other => Left(resultToApiError(other))
                     }
@@ -159,7 +167,13 @@ trait AccountServiceEndpoints[SU]
                           // create a new session
                           val session = Session(account.uuid)
                           session += (Session.anonymousKey, false)
-                          Right((r._1, account.view.asInstanceOf[AV]), Some(session))
+                          Right(
+                            (
+                              r._1.map(_ => None) /*akka-http-session bug ?*/,
+                              account.view.asInstanceOf[AV]
+                            ),
+                            Some(session)
+                          )
                         } else {
                           Right(((r._1, account.view.asInstanceOf[AV]), maybeSession))
                         }
@@ -286,7 +300,15 @@ trait AccountServiceEndpoints[SU]
                             session += (profileKey, profile.name)
                           case _ =>
                         }
-                        Right(((r._1, account.view.asInstanceOf[AV]), Some(session)))
+                        Right(
+                          (
+                            (
+                              r._1.map(_ => None) /*akka-http-session bug ?*/,
+                              account.view.asInstanceOf[AV]
+                            ),
+                            Some(session)
+                          )
+                        )
 
                       case other => Left(resultToApiError(other))
                     }
