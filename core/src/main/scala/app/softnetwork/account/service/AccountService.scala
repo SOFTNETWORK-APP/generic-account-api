@@ -32,7 +32,8 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
     with Directives
     with DefaultComplete
     with Json4sSupport
-    with StrictLogging { _: CommandTypeKey[AccountCommand] with ManifestWrapper[AV] =>
+    with StrictLogging
+    with ApiRoute { _: CommandTypeKey[AccountCommand] with ManifestWrapper[AV] =>
 
   type SU
 

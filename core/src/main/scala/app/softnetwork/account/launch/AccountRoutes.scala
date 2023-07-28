@@ -2,7 +2,7 @@ package app.softnetwork.account.launch
 
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.server.Route
-import app.softnetwork.api.server.ApiRoutes
+import app.softnetwork.api.server.{ApiRoute, ApiRoutes}
 import app.softnetwork.account.model.{
   Account,
   AccountDecorator,
@@ -33,6 +33,7 @@ trait AccountRoutes[
 
   def accountService: ActorSystem[_] => AccountService[PV, DV, AV]
 
-  override def apiRoutes(system: ActorSystem[_]): Route = accountService(system).route
+  override def apiRoutes: ActorSystem[_] => List[ApiRoute] =
+    system => List(accountService(system))
 
 }
