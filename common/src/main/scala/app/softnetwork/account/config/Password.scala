@@ -49,6 +49,35 @@ object Password {
       else
         Left(result.getDetails.asScala.map(_.getErrorCode))
     }
+
+    def generatePassword(size: Int): String = {
+      length match {
+        case Some(value) =>
+          assert(size >= value.min, s"Password size must be greater than or equal to ${value.min}")
+          assert(size <= value.max, s"Password size must be less than or equal to ${value.max}")
+        case _ =>
+      }
+      val characterRules = Seq(
+        lowerCaseCharacter match {
+          case Some(r) => Some(new CharacterRule(EnglishCharacterData.LowerCase, r.size))
+          case _ => None
+        },
+        upperCaseCharacter match {
+          case Some(r) => Some(new CharacterRule(EnglishCharacterData.UpperCase, r.size))
+          case _ => None
+        },
+        numberCharacter match {
+          case Some(r) => Some(new CharacterRule(EnglishCharacterData.Digit, r.size))
+          case _ => None
+        },
+        specialCharacter match {
+          case Some(r) => Some(new CharacterRule(EnglishCharacterData.Special, r.size))
+          case _ => None
+        }
+      ).flatten
+      val passwordGenerator = new org.passay.PasswordGenerator()
+      passwordGenerator.generatePassword(size, characterRules: _*)
+    }
   }
 
   case class Length(min: Int = 8, max: Int = 16) extends PasswordRule {

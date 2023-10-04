@@ -814,7 +814,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
     Schedule4AccountNotTriggered
   )
 
-  private def authenticate(
+  protected def authenticate(
     login: String,
     anonymous: Option[String],
     verify: String => Boolean,
