@@ -36,7 +36,7 @@ package object message {
 
   case object DestroyAccount extends AccountCommand
 
-  sealed trait LookupAccountCommand extends AccountCommand
+  trait LookupAccountCommand extends AccountCommand
 
   case class BasicAuth(credentials: Credentials.Provided) extends LookupAccountCommand
 
