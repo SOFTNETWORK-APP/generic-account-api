@@ -1,6 +1,6 @@
 import com.typesafe.sbt.packager.docker._
 
-Compile / mainClass := Some("app.softnetwork.persistence.auth.api.BasicAccountPostgresLauncher")
+Compile / mainClass := Some("app.softnetwork.persistence.auth.api.BasicAccountEndpointsPostgresLauncher")
 
 dockerBaseImage := "openjdk:8"
 
