@@ -60,19 +60,19 @@ object Password {
       val characterRules = Seq(
         lowerCaseCharacter match {
           case Some(r) => Some(new CharacterRule(EnglishCharacterData.LowerCase, r.size))
-          case _ => None
+          case _       => None
         },
         upperCaseCharacter match {
           case Some(r) => Some(new CharacterRule(EnglishCharacterData.UpperCase, r.size))
-          case _ => None
+          case _       => None
         },
         numberCharacter match {
           case Some(r) => Some(new CharacterRule(EnglishCharacterData.Digit, r.size))
-          case _ => None
+          case _       => None
         },
         specialCharacter match {
           case Some(r) => Some(new CharacterRule(EnglishCharacterData.Special, r.size))
-          case _ => None
+          case _       => None
         }
       ).flatten
       val passwordGenerator = new org.passay.PasswordGenerator()

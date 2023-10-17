@@ -10,7 +10,7 @@ object MockBasicAccountService {
     new MockBasicAccountService {
       lazy val log: Logger = LoggerFactory getLogger getClass.getName
       override implicit def system: ActorSystem[_] = asystem
-      override def sessionService: SessionService = _sessionService
+      override def service: SessionService = _sessionService
       override protected lazy val manifestWrapper: ManifestW = ManifestW()
     }
   }

@@ -10,7 +10,9 @@ import app.softnetwork.account.model.{
   DefaultProfileView
 }
 import app.softnetwork.account.service.{AccountService, BasicAccountService}
+import app.softnetwork.api.server.ApiRoute
 import app.softnetwork.persistence.schema.SchemaProvider
+import app.softnetwork.session.CsrfCheck
 
 trait BasicAccountRoutes
     extends AccountRoutes[
@@ -20,11 +22,14 @@ trait BasicAccountRoutes
       DefaultAccountDetailsView,
       DefaultAccountView[DefaultProfileView, DefaultAccountDetailsView]
     ] {
-  _: SchemaProvider =>
+  _: BasicAccountApi with SchemaProvider with CsrfCheck =>
   override def accountService: ActorSystem[_] => AccountService[
     DefaultProfileView,
     DefaultAccountDetailsView,
     DefaultAccountView[DefaultProfileView, DefaultAccountDetailsView]
   ] =
     sys => BasicAccountService(sys, sessionService(sys))
+
+  override def apiRoutes: ActorSystem[_] => List[ApiRoute] = system =>
+    super.apiRoutes(system) :+ accountSwagger(system)
 }

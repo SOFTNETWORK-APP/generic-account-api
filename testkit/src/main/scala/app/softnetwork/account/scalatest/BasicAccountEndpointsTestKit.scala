@@ -11,12 +11,12 @@ import app.softnetwork.session.scalatest.{
   RefreshableCookieSessionEndpointsTestKit,
   RefreshableHeaderSessionEndpointsTestKit
 }
-import com.softwaremill.session.CsrfCheckHeader
+import app.softnetwork.session.{CsrfCheck, CsrfCheckHeader}
 import org.scalatest.Suite
 
 trait BasicAccountEndpointsTestKit
     extends AccountEndpointsTestKit[BasicAccount, BasicAccountProfile, BasicAccountSignUp] {
-  _: SchemaProvider =>
+  _: SchemaProvider with CsrfCheck =>
   override def accountEndpoints: ActorSystem[_] => AccountServiceEndpoints[BasicAccountSignUp] =
     system => MockBasicAccountServiceEndpoints(system, sessionEndpoints(system))
 }

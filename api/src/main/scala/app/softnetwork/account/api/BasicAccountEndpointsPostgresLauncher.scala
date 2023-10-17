@@ -1,10 +1,8 @@
 package app.softnetwork.account.api
 
-import akka.actor.typed.ActorSystem
 import app.softnetwork.persistence.jdbc.schema.{JdbcSchemaProvider, JdbcSchemaTypes}
 import app.softnetwork.persistence.schema.SchemaType
-import app.softnetwork.session.service.SessionEndpoints
-import com.softwaremill.session.CsrfCheckHeader
+import app.softnetwork.session.CsrfCheckHeader
 import org.slf4j.{Logger, LoggerFactory}
 
 object BasicAccountEndpointsPostgresLauncher
@@ -15,6 +13,4 @@ object BasicAccountEndpointsPostgresLauncher
 
   override def schemaType: SchemaType = JdbcSchemaTypes.Postgres
 
-  override def sessionEndpoints: ActorSystem[_] => SessionEndpoints = system =>
-    SessionEndpoints.oneOffCookie(system, checkHeaderAndForm)
 }

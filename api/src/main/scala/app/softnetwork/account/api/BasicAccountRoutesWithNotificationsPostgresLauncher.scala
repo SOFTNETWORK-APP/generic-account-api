@@ -6,20 +6,18 @@ import app.softnetwork.persistence.jdbc.schema.{JdbcSchemaProvider, JdbcSchemaTy
 import app.softnetwork.persistence.launch.PersistentEntity
 import app.softnetwork.persistence.query.EventProcessorStream
 import app.softnetwork.persistence.schema.SchemaType
-import app.softnetwork.session.service.SessionService
+import app.softnetwork.session.CsrfCheckHeader
 import org.slf4j.{Logger, LoggerFactory}
 
 object BasicAccountRoutesWithNotificationsPostgresLauncher
     extends AllNotificationsApi
     with BasicAccountRoutesApi
-    with JdbcSchemaProvider {
+    with JdbcSchemaProvider
+    with CsrfCheckHeader {
 
   lazy val log: Logger = LoggerFactory getLogger getClass.getName
 
   override def schemaType: SchemaType = JdbcSchemaTypes.Postgres
-
-  override def sessionService: ActorSystem[_] => SessionService = system =>
-    SessionService.oneOffCookie(system)
 
   /** initialize all entities
     */

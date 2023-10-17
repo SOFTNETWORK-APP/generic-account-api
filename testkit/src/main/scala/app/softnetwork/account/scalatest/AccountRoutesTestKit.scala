@@ -11,6 +11,7 @@ import app.softnetwork.account.model.{
   ProfileView
 }
 import app.softnetwork.persistence.schema.SchemaProvider
+import app.softnetwork.session.CsrfCheck
 
 trait AccountRoutesTestKit[
   T <: Account with AccountDecorator,
@@ -18,4 +19,4 @@ trait AccountRoutesTestKit[
   PV <: ProfileView,
   DV <: AccountDetailsView,
   AV <: AccountView[PV, DV]
-] extends AccountRoutes[T, P, PV, DV, AV] { _: SchemaProvider => }
+] extends AccountRoutes[T, P, PV, DV, AV] { _: SchemaProvider with CsrfCheck => }

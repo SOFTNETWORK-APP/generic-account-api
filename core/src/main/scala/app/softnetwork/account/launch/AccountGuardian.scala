@@ -1,6 +1,7 @@
 package app.softnetwork.account.launch
 
 import akka.actor.typed.ActorSystem
+import app.softnetwork.account.AccountCoreBuildInfo
 import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.handlers.AccountDao
 import app.softnetwork.account.model.{Account, AccountDecorator, Profile, ProfileDecorator}
@@ -13,12 +14,13 @@ import app.softnetwork.persistence.launch.PersistentEntity
 import app.softnetwork.persistence.query.EventProcessorStream
 import app.softnetwork.persistence.launch.PersistenceGuardian._
 import app.softnetwork.persistence.schema.SchemaProvider
+import app.softnetwork.session.CsrfCheck
 import app.softnetwork.session.launch.SessionGuardian
 
 trait AccountGuardian[
   T <: Account with AccountDecorator,
   P <: Profile with ProfileDecorator
-] extends SessionGuardian { _: SchemaProvider =>
+] extends SessionGuardian { _: SchemaProvider with CsrfCheck =>
 
   def accountBehavior: ActorSystem[_] => AccountBehavior[T, P]
 
@@ -61,4 +63,8 @@ trait AccountGuardian[
     initAccountSystem(system)
     super.initSystem(system)
   }
+
+  override def systemVersion(): String =
+    sys.env.getOrElse("VERSION", AccountCoreBuildInfo.version)
+
 }

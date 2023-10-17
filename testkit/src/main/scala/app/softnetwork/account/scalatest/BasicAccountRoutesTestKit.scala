@@ -10,6 +10,7 @@ import app.softnetwork.account.model.{
 }
 import app.softnetwork.account.service.{AccountService, MockBasicAccountService}
 import app.softnetwork.persistence.schema.SchemaProvider
+import app.softnetwork.session.CsrfCheck
 import app.softnetwork.session.scalatest.{
   OneOffCookieSessionServiceTestKit,
   OneOffHeaderSessionServiceTestKit,
@@ -26,7 +27,7 @@ trait BasicAccountRoutesTestKit
       DefaultAccountDetailsView,
       DefaultAccountView[DefaultProfileView, DefaultAccountDetailsView]
     ] {
-  _: SchemaProvider =>
+  _: SchemaProvider with CsrfCheck =>
 
   override def accountService: ActorSystem[_] => AccountService[
     DefaultProfileView,

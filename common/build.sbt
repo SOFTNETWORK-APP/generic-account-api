@@ -1,5 +1,3 @@
-import app.softnetwork.sbt.build._
-
 organization := "app.softnetwork.account"
 
 name := "account-common"
