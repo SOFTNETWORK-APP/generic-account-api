@@ -5,7 +5,6 @@ import app.softnetwork.account.message._
 import app.softnetwork.account.model.AuthorizationCode
 import app.softnetwork.account.serialization.accountFormats
 import app.softnetwork.api.server.ApiErrors
-import app.softnetwork.api.server.ApiErrors.ExtendedErrorInfo
 import app.softnetwork.persistence.typed.CommandTypeKey
 import app.softnetwork.session.service.ServiceWithSessionEndpoints
 import org.json4s.Formats
@@ -14,10 +13,8 @@ import org.softnetwork.session.model.Session.profileKey
 import sttp.capabilities
 import sttp.capabilities.akka.AkkaStreams
 import sttp.model.headers.AuthenticationScheme.{Basic, Bearer}
-import sttp.model.{HeaderNames, StatusCode}
 import sttp.model.headers.WWWAuthenticateChallenge
 import sttp.tapir.EndpointIO.Example
-import sttp.tapir.{Codec, CodecFormat, DecodeResult, EndpointOutput}
 import sttp.tapir.json.json4s.jsonBody
 import sttp.tapir.model.UsernamePassword
 import sttp.tapir.server.ServerEndpoint
@@ -34,28 +31,10 @@ trait OAuthServiceEndpoints
 
   override implicit def formats: Formats = accountFormats
 
-  implicit val unauthorizedWithChallengeCodec
-    : Codec[String, UnauthorizedWithChallenge, CodecFormat.TextPlain] =
-    Codec.string.mapDecode(s =>
-      WWWAuthenticateChallenge.parseSingle(s) match {
-        case Right(challenge) =>
-          DecodeResult.Value(
-            UnauthorizedWithChallenge(challenge.scheme, challenge.realm.getOrElse(""))
-          )
-        case Left(_) => DecodeResult.Error(s, new Exception("Cannot parse WWW-Authenticate header"))
-      }
-    )(_.toString())
-
-  val unauthorizedWithChallengeVariant: EndpointOutput.OneOfVariant[UnauthorizedWithChallenge] =
-    oneOfVariant(
-      statusCode(StatusCode.Unauthorized)
-        .and(header[UnauthorizedWithChallenge](HeaderNames.WwwAuthenticate))
-    )
-
   override implicit def resultToApiError(result: AccountCommandResult): ApiErrors.ErrorInfo =
     result match {
-      case BasicAuthenticationFailed  => UnauthorizedWithChallenge(Basic, AccountSettings.Realm)
-      case BearerAuthenticationFailed => UnauthorizedWithChallenge(Bearer, AccountSettings.Realm)
+      case BasicAuthenticationFailed  => ApiErrors.UnauthorizedWithChallenge(Basic, AccountSettings.Realm)
+      case BearerAuthenticationFailed => ApiErrors.UnauthorizedWithChallenge(Bearer, AccountSettings.Realm)
       case LoginAndPasswordNotMatched => ApiErrors.Unauthorized(LoginAndPasswordNotMatched)
       case AccountDisabled            => ApiErrors.Unauthorized(AccountDisabled)
       case AccountNotFound            => ApiErrors.NotFound(AccountNotFound)
@@ -73,22 +52,7 @@ trait OAuthServiceEndpoints
       .securityIn(
         auth.basic[UsernamePassword](WWWAuthenticateChallenge.basic(AccountSettings.Realm))
       )
-      .errorOut(
-        oneOf[ApiErrors.ErrorInfo](
-          // returns required http code for different types of ErrorInfo.
-          // For secured endpoint you need to define
-          // all cases before defining security logic
-          ApiErrors.forbiddenVariant,
-          ApiErrors.unauthorizedVariant,
-          unauthorizedWithChallengeVariant,
-          ApiErrors.notFoundVariant,
-          ApiErrors.foundVariant,
-          ApiErrors.badRequestVariant,
-          ApiErrors.internalServerErrorVariant,
-          // default case below.
-          ApiErrors.defaultErrorVariant
-        )
-      )
+      .errorOut(ApiErrors.oneOfApiErrors)
       .serverSecurityLogicWithOutput(up =>
         run(up.username, Login(up.username, up.password.getOrElse(""))) map {
           case r: LoginSucceededResult =>
@@ -216,11 +180,7 @@ trait OAuthServiceEndpoints
           .in(AccountSettings.OAuthPath / "me")
           .description("OAuth2 me endpoint")
           .securityIn(auth.bearer[String](WWWAuthenticateChallenge.bearer(AccountSettings.Realm)))
-          .errorOut(
-            oneOf[ApiErrors.ErrorInfo](
-              unauthorizedWithChallengeVariant
-            )
-          )
+          .errorOut(ApiErrors.oneOfApiErrors)
           .out(jsonBody[Me])
           .serverSecurityLogicWithOutput(token =>
             run(token, OAuth(token)) map {
@@ -313,10 +273,4 @@ object TokenRequest {
     }
 
   def encode(tokenRequest: TokenRequest): Map[String, String] = tokenRequest.asMap()
-}
-
-case class UnauthorizedWithChallenge(scheme: String, realm: String) extends ExtendedErrorInfo {
-  override val message: String = "Unauthorized"
-
-  override def toString: String = WWWAuthenticateChallenge(scheme).realm(realm).toString()
 }
