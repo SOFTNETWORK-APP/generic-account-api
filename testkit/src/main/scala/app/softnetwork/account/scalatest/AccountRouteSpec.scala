@@ -179,7 +179,7 @@ trait AccountRouteSpec[
   }
 
   "oauth" should {
-    "should generate authorization code with matching username and password" in {
+    "generate authorization code with matching username and password" in {
       val validCredentials = BasicHttpCredentials(username, password)
       Get(
         s"/$RootPath/${AccountSettings.OAuthPath}/authorize?response_type=code&client_id=test"
@@ -191,7 +191,7 @@ trait AccountRouteSpec[
         authorizationCode should not be empty
       }
     }
-    "should generate access token with matching authorization code" in {
+    "generate access token with matching authorization code" in {
       Post(
         s"/$RootPath/${AccountSettings.OAuthPath}/token",
         FormData(
@@ -209,7 +209,7 @@ trait AccountRouteSpec[
         refreshToken should not be empty
       }
     }
-    "should refresh access token" in {
+    "refresh access token" in {
       Post(
         s"/$RootPath/${AccountSettings.OAuthPath}/token",
         FormData(
@@ -229,7 +229,7 @@ trait AccountRouteSpec[
         refreshToken = refreshToken2
       }
     }
-    "should retrieve me with matching bearer access token" in {
+    "retrieve me with matching bearer access token" in {
       implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
       Get(
         s"/$RootPath/${AccountSettings.OAuthPath}/me"
@@ -333,7 +333,12 @@ trait AccountRouteSpec[
         Login(gsm, password)
       ) ~> routes // reset number of failures
       (0 until AccountSettings.MaxLoginFailures) // max number of failures
-        .map(_ => Post(s"/$RootPath/${AccountSettings.Path}/login", Login(gsm, "fake")) ~> routes)
+        .map(_ =>
+          Post(s"/$RootPath/${AccountSettings.Path}/login", Login(gsm, "fake")) ~> routes ~> check {
+            status shouldEqual StatusCodes.Unauthorized
+            responseAs[AccountErrorMessage].message shouldEqual LoginAndPasswordNotMatched.message
+          }
+        )
       Post(s"/$RootPath/${AccountSettings.Path}/login", Login(gsm, "fake")) ~> routes ~> check {
         status shouldEqual StatusCodes.Unauthorized
         responseAs[AccountErrorMessage].message shouldEqual AccountDisabled.message
