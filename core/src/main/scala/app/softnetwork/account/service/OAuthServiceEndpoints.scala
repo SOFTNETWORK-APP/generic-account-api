@@ -33,8 +33,10 @@ trait OAuthServiceEndpoints
 
   override implicit def resultToApiError(result: AccountCommandResult): ApiErrors.ErrorInfo =
     result match {
-      case BasicAuthenticationFailed  => ApiErrors.UnauthorizedWithChallenge(Basic, AccountSettings.Realm)
-      case BearerAuthenticationFailed => ApiErrors.UnauthorizedWithChallenge(Bearer, AccountSettings.Realm)
+      case BasicAuthenticationFailed =>
+        ApiErrors.UnauthorizedWithChallenge(Basic, AccountSettings.Realm)
+      case BearerAuthenticationFailed =>
+        ApiErrors.UnauthorizedWithChallenge(Bearer, AccountSettings.Realm)
       case LoginAndPasswordNotMatched => ApiErrors.Unauthorized(LoginAndPasswordNotMatched)
       case AccountDisabled            => ApiErrors.Unauthorized(AccountDisabled)
       case AccountNotFound            => ApiErrors.NotFound(AccountNotFound)
