@@ -1,7 +1,9 @@
 package app.softnetwork.account.persistence.typed
 
+import akka.actor.typed.scaladsl.ActorContext
 import app.softnetwork.account.handlers.{DefaultGenerator, Generator}
 import app.softnetwork.account.message.{
+  AccountCommand,
   AccountCreatedEvent,
   BasicAccountCreatedEvent,
   BasicAccountProfileUpdatedEvent,
@@ -13,19 +15,21 @@ import java.time.Instant
 
 trait BasicAccountBehavior extends AccountBehavior[BasicAccount, BasicAccountProfile] {
   self: Generator =>
-  override protected def createAccount(entityId: String, cmd: SignUp): Option[BasicAccount] =
+  override protected def createAccount(entityId: String, cmd: SignUp)(implicit
+    context: ActorContext[AccountCommand]
+  ): Option[BasicAccount] =
     BasicAccount(cmd, Some(entityId))
 
   override protected def createProfileUpdatedEvent(
     uuid: String,
     profile: BasicAccountProfile,
     loginUpdated: Option[Boolean]
-  ): BasicAccountProfileUpdatedEvent =
+  )(implicit context: ActorContext[AccountCommand]): BasicAccountProfileUpdatedEvent =
     BasicAccountProfileUpdatedEvent(uuid, profile, loginUpdated).withLastUpdated(Instant.now())
 
   override protected def createAccountCreatedEvent(
     account: BasicAccount
-  ): AccountCreatedEvent[BasicAccount] =
+  )(implicit context: ActorContext[AccountCommand]): AccountCreatedEvent[BasicAccount] =
     BasicAccountCreatedEvent(account)
 }
 

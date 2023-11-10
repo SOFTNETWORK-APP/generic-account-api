@@ -21,6 +21,8 @@ trait Account extends Principals with AccountDecorator with Timestamped {
   def verificationToken: Option[VerificationToken]
   def verificationCode: Option[VerificationCode]
 
+  def applications: Seq[Application]
+
   def registrations: Seq[DeviceRegistration]
 
   def principal: Principal
@@ -329,6 +331,7 @@ trait AccountDecorator { account: Account =>
   def withRegistrations(registrations: Seq[DeviceRegistration]): Account
   def withAnonymous(anonymous: Boolean): Account
   def withFromAnonymous(fromAnonymous: Boolean): Account
+  def withApplications(applications: Seq[Application]): Account
 
   def copyWithCredentials(credentials: String): Account = withCredentials(credentials)
   def copyWithLastLogin(lastLogin: Option[Instant]): Account = withLastLogin(lastLogin.orNull)

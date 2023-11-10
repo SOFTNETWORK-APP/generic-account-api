@@ -9,7 +9,7 @@ object MockGenerator {
   def computeToken(uuid: String) = s"$uuid-$token"
 }
 
-trait MockGenerator extends Generator with ExpirationDate {
+trait MockGenerator extends DefaultGenerator with ExpirationDate {
 
   import MockGenerator._
 

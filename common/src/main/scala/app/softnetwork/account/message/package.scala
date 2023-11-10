@@ -40,6 +40,23 @@ package object message {
 
   case class BasicAuth(credentials: Credentials.Provided) extends LookupAccountCommand
 
+  case class GenerateAuthorizationCode(
+    clientId: String,
+    scope: Option[String] = None,
+    redirectUri: Option[String] = None,
+    state: Option[String] = None
+  ) extends AccountCommand
+
+  case class GenerateAccessToken(
+    clientId: String,
+    code: String,
+    redirectUri: Option[String] = None
+  ) extends LookupAccountCommand
+
+  case class RefreshAccessToken(refreshToken: String) extends LookupAccountCommand
+
+  case class OAuth(token: String) extends LookupAccountCommand
+
   @SerialVersionUID(0L)
   case class Login(
     login: String,
@@ -174,6 +191,22 @@ package object message {
 
   case class Schedule4AccountTriggered(schedule: Schedule) extends AccountCommandResult
 
+  case class AuthorizationCodeGenerated(authorizationCode: AuthorizationCode)
+      extends AccountCommandResult
+
+  case class AccessTokenGenerated(accessToken: AccessToken) extends AccountCommandResult
+
+  case class AccessTokenRefreshed(accessToken: AccessToken) extends AccountCommandResult
+
+  case class Tokens(
+    access_token: String,
+    token_type: String,
+    expires_in: Int,
+    refresh_token: String
+  )
+
+  case class Me(firstName: String, lastName: String, email: Option[String] = None)
+
   /** Created by smanciot on 19/03/2018.
     */
   @SerialVersionUID(0L)
@@ -227,6 +260,12 @@ package object message {
 
   case object CodeExpired extends AccountErrorMessage("CodeExpired")
 
+  case object InvalidCode extends AccountErrorMessage("InvalidCode")
+
+  case object InvalidState extends AccountErrorMessage("InvalidState")
+
+  case object InvalidRedirection extends AccountErrorMessage("InvalidRedirection")
+
   case object DeviceRegistrationNotFound
       extends AccountErrorMessage("DeviceRegistrationNotFound")
       with DeviceCommandResult
@@ -254,4 +293,10 @@ package object message {
   case object Schedule4AccountNotTriggered
       extends AccountErrorMessage("Schedule4AccountNotTriggered")
 
+  case object AccessTokenAlreadyExists extends AccountErrorMessage("AccessTokenAlreadyExists")
+
+  case object AuthorizationCodeAlreadyExists
+      extends AccountErrorMessage("AuthorizationCodeAlreadyExists")
+
+  case object ApplicationNotFound extends AccountErrorMessage("ApplicationNotFound")
 }

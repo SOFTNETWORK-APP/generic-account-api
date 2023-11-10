@@ -54,6 +54,37 @@ message DeviceRegistration {
     optional string deviceId = 4;
 }
 
+message AuthorizationCode {
+    option (scalapb.message).extends = "ProtobufDomainObject";
+    option (scalapb.message).extends = "VerificationExpirationDate";
+    option (scalapb.message).companion_extends = "AuthorizationCodeCompanion";
+    required string code = 1;
+    optional string scope = 2;
+    optional string redirectUri = 3;
+    optional string state = 4;
+    required google.protobuf.Timestamp expirationDate = 5 [(scalapb.field).type = "java.time.Instant"];
+}
+
+message AccessToken {
+    option (scalapb.message).extends = "ProtobufDomainObject";
+    option (scalapb.message).extends = "VerificationExpirationDate";
+    option (scalapb.message).companion_extends = "AccessTokenCompanion";
+    required string token = 1;
+    required string tokenType = 2 [default = "Bearer"];
+    optional string scope = 3;
+    required google.protobuf.Timestamp expirationDate = 4 [(scalapb.field).type = "java.time.Instant"];
+    required string refreshToken = 5;
+}
+
+message Application {
+    option (scalapb.message).extends = "ProtobufDomainObject";
+    required string clientId = 1;
+    optional string clientSecret = 2;
+    optional string redirectUri = 3;
+    optional AuthorizationCode authorizationCode = 4;
+    optional AccessToken accessToken = 5;
+}
+
 message BasicAccountProfile {
     option (scalapb.message).extends = "ProtobufDomainObject";
     option (scalapb.message).extends = "Profile";
@@ -111,6 +142,7 @@ message BasicAccount {
     optional google.protobuf.Timestamp lastLogout = 17 [(scalapb.field).type = "java.time.Instant"];
     optional bool anonymous = 18;
     optional bool fromAnonymous = 19;
+    repeated Application applications = 20;
 }
 
 message ValidationError {

@@ -12,7 +12,7 @@ import app.softnetwork.account.model.{
   ProfileView
 }
 import app.softnetwork.account.serialization.accountFormats
-import app.softnetwork.account.service.AccountService
+import app.softnetwork.account.service.{AccountService, OAuthService}
 import app.softnetwork.persistence.schema.SchemaProvider
 import app.softnetwork.session.CsrfCheck
 import org.json4s.Formats
@@ -30,7 +30,9 @@ trait AccountRoutes[
 
   def accountService: ActorSystem[_] => AccountService[PV, DV, AV]
 
+  def oauthService: ActorSystem[_] => OAuthService
+
   override def apiRoutes: ActorSystem[_] => List[ApiRoute] =
-    system => List(accountService(system))
+    system => List(accountService(system), oauthService(system))
 
 }

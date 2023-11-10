@@ -161,3 +161,11 @@ message AccountNotificationRecordedEvent {
     required string subject = 3;
     required string content = 4;
 }
+
+message ApplicationsUpdatedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "AccountEvent";
+    required string uuid = 1;
+    required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.time.Instant"];
+    repeated app.softnetwork.account.model.Application applications = 3;
+}

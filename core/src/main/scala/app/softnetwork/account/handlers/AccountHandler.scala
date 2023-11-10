@@ -39,6 +39,7 @@ trait AccountHandler extends EntityPattern[AccountCommand, AccountCommandResult]
           case _ =>
             command match {
               case _: CheckResetPasswordToken => Future.successful(TokenNotFound)
+              case _: RefreshAccessToken      => Future.successful(TokenNotFound)
               case _: ResetPassword           => Future.successful(CodeNotFound)
               case _: Login                   => Future.successful(LoginAndPasswordNotMatched)
               case _                          => Future.successful(AccountNotFound)

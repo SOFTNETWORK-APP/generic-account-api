@@ -1,7 +1,7 @@
 package app.softnetwork.account.scalatest
 
-import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.model.headers.BasicHttpCredentials
+import akka.http.scaladsl.model.{FormData, HttpProtocols, StatusCodes}
+import akka.http.scaladsl.model.headers.{BasicHttpCredentials, OAuth2BearerToken}
 import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.handlers.{AccountKeyDao, MockGenerator}
 import app.softnetwork.account.message._
@@ -11,6 +11,7 @@ import app.softnetwork.account.model.{
   AccountDetailsView,
   AccountStatus,
   AccountView,
+  AuthorizationCode,
   Profile,
   ProfileDecorator,
   ProfileView
@@ -36,15 +37,21 @@ trait AccountRouteSpec[
 
   protected val username = "smanciot"
 
-  protected val firstName = Some("Stephane")
+  protected val firstName = "Pascal"
 
-  protected val lastName = Some("Manciot")
+  protected val lastName = "Dupont"
 
-  protected val email = "stephane.manciot@gmail.com"
+  protected val email = "pascal.dupont@gmail.com"
 
   protected val gsm = "33660010203"
 
   protected val password = "Changeit1"
+
+  protected var authorizationCode: String = _
+
+  protected var accessToken: String = _
+
+  protected var refreshToken: String = _
 
   def profile: P
 
@@ -108,9 +115,7 @@ trait AccountRouteSpec[
       Post(
         s"/$RootPath/${AccountSettings.Path}/signUp",
         BasicAccountSignUp(username, password)
-      ) ~> mainRoutes(
-        typedSystem()
-      ) ~> check {
+      ) ~> routes ~> check {
         status shouldEqual StatusCodes.BadRequest
         responseAs[AccountErrorMessage].message shouldBe LoginAlreadyExists.message
       }
@@ -134,9 +139,7 @@ trait AccountRouteSpec[
       Post(
         s"/$RootPath/${AccountSettings.Path}/signUp",
         BasicAccountSignUp(email, password)
-      ) ~> mainRoutes(
-        typedSystem()
-      ) ~> check {
+      ) ~> routes ~> check {
         status shouldEqual StatusCodes.BadRequest
         responseAs[AccountErrorMessage].message shouldEqual LoginAlreadyExists.message
       }
@@ -155,9 +158,7 @@ trait AccountRouteSpec[
       Post(
         s"/$RootPath/${AccountSettings.Path}/signUp",
         BasicAccountSignUp(gsm, password)
-      ) ~> mainRoutes(
-        typedSystem()
-      ) ~> check {
+      ) ~> routes ~> check {
         status shouldEqual StatusCodes.BadRequest
         responseAs[AccountErrorMessage].message shouldEqual LoginAlreadyExists.message
       }
@@ -170,11 +171,75 @@ trait AccountRouteSpec[
       val validCredentials = BasicHttpCredentials(username, password)
       Post(s"/$RootPath/${AccountSettings.Path}/basic") ~> addCredentials(
         validCredentials
-      ) ~> mainRoutes(
-        typedSystem()
-      ) ~> check {
+      ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
         responseAs[AV].status shouldBe AccountStatus.Active
+      }
+    }
+  }
+
+  "oauth" should {
+    "should generate authorization code with matching username and password" in {
+      val validCredentials = BasicHttpCredentials(username, password)
+      Get(
+        s"/$RootPath/${AccountSettings.OAuthPath}/authorize?response_type=code&client_id=test"
+      ) ~> addCredentials(
+        validCredentials
+      ) ~> routes ~> check {
+        status shouldEqual StatusCodes.OK
+        authorizationCode = responseAs[AuthorizationCode].code
+        authorizationCode should not be empty
+      }
+    }
+    "should generate access token with matching authorization code" in {
+      Post(
+        s"/$RootPath/${AccountSettings.OAuthPath}/token",
+        FormData(
+          "grant_type"   -> "authorization_code",
+          "code"         -> authorizationCode,
+          "client_id"    -> "test",
+          "redirect_uri" -> "" // http://localhost:8080"
+        ).toEntity
+      ).withProtocol(HttpProtocols.`HTTP/1.1`) ~> routes ~> check {
+        status shouldEqual StatusCodes.OK
+        val tokens = responseAs[Tokens]
+        accessToken = tokens.access_token
+        accessToken should not be empty
+        refreshToken = tokens.refresh_token
+        refreshToken should not be empty
+      }
+    }
+    "should refresh access token" in {
+      Post(
+        s"/$RootPath/${AccountSettings.OAuthPath}/token",
+        FormData(
+          "grant_type"    -> "refresh_token",
+          "refresh_token" -> refreshToken
+        ).toEntity
+      ).withProtocol(HttpProtocols.`HTTP/1.1`) ~> routes ~> check {
+        status shouldEqual StatusCodes.OK
+        val tokens = responseAs[Tokens]
+        val accessToken2 = tokens.access_token
+        accessToken2 should not be empty
+        assert(accessToken != accessToken2)
+        accessToken = accessToken2
+        val refreshToken2 = tokens.refresh_token
+        refreshToken2 should not be empty
+        assert(refreshToken != refreshToken2)
+        refreshToken = refreshToken2
+      }
+    }
+    "should retrieve me with matching bearer access token" in {
+      implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
+      Get(
+        s"/$RootPath/${AccountSettings.OAuthPath}/me"
+      ) ~> addCredentials(
+        OAuth2BearerToken(accessToken)
+      ) ~> routes ~> check {
+        status shouldEqual StatusCodes.OK
+        val me = responseAs[Me]
+        me.firstName shouldBe firstName
+        me.lastName shouldBe lastName
       }
     }
   }
@@ -197,9 +262,10 @@ trait AccountRouteSpec[
             s"/$RootPath/${AccountSettings.Path}/activate",
             Activate(MockGenerator.computeToken(uuid))
           ) ~> routes
-          Post(s"/$RootPath/${AccountSettings.Path}/login", Login(email, password)) ~> mainRoutes(
-            typedSystem()
-          ) ~> check {
+          Post(
+            s"/$RootPath/${AccountSettings.Path}/login",
+            Login(email, password)
+          ) ~> routes ~> check {
             status shouldEqual StatusCodes.OK
             responseAs[AV].status shouldBe AccountStatus.Active
           }
@@ -208,17 +274,16 @@ trait AccountRouteSpec[
     }
     "work with matching gsm and password" in {
       implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
-      Post(s"/$RootPath/${AccountSettings.Path}/login", Login(gsm, password)) ~> mainRoutes(
-        typedSystem()
-      ) ~> check {
+      Post(s"/$RootPath/${AccountSettings.Path}/login", Login(gsm, password)) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
         responseAs[AV].status shouldBe AccountStatus.Active
       }
     }
     "fail with unknown username" in {
-      Post(s"/$RootPath/${AccountSettings.Path}/login", Login("fake", password)) ~> mainRoutes(
-        typedSystem()
-      ) ~> check {
+      Post(
+        s"/$RootPath/${AccountSettings.Path}/login",
+        Login("fake", password)
+      ) ~> routes ~> check {
         status shouldEqual StatusCodes.Unauthorized
         responseAs[AccountErrorMessage].message shouldEqual LoginAndPasswordNotMatched.message
       }
@@ -227,9 +292,7 @@ trait AccountRouteSpec[
       Post(
         s"/$RootPath/${AccountSettings.Path}/login",
         Login("fake@gmail.com", password)
-      ) ~> mainRoutes(
-        typedSystem()
-      ) ~> check {
+      ) ~> routes ~> check {
         status shouldEqual StatusCodes.Unauthorized
         responseAs[AccountErrorMessage].message shouldEqual LoginAndPasswordNotMatched.message
       }
@@ -238,50 +301,40 @@ trait AccountRouteSpec[
       Post(
         s"/$RootPath/${AccountSettings.Path}/login",
         Login("0102030405", password)
-      ) ~> mainRoutes(
-        typedSystem()
-      ) ~> check {
+      ) ~> routes ~> check {
         status shouldEqual StatusCodes.Unauthorized
         responseAs[AccountErrorMessage].message shouldEqual LoginAndPasswordNotMatched.message
       }
     }
     "fail with unmatching username and password" in {
-      Post(s"/$RootPath/${AccountSettings.Path}/login", Login(username, "fake")) ~> mainRoutes(
-        typedSystem()
-      ) ~> check {
+      Post(
+        s"/$RootPath/${AccountSettings.Path}/login",
+        Login(username, "fake")
+      ) ~> routes ~> check {
         status shouldEqual StatusCodes.Unauthorized
         responseAs[AccountErrorMessage].message shouldEqual LoginAndPasswordNotMatched.message
       }
     }
     "fail with unmatching email and password" in {
-      Post(s"/$RootPath/${AccountSettings.Path}/login", Login(email, "fake")) ~> mainRoutes(
-        typedSystem()
-      ) ~> check {
+      Post(s"/$RootPath/${AccountSettings.Path}/login", Login(email, "fake")) ~> routes ~> check {
         status shouldEqual StatusCodes.Unauthorized
         responseAs[AccountErrorMessage].message shouldEqual LoginAndPasswordNotMatched.message
       }
     }
     "fail with unmatching gsm and password" in {
-      Post(s"/$RootPath/${AccountSettings.Path}/login", Login(gsm, "fake")) ~> mainRoutes(
-        typedSystem()
-      ) ~> check {
+      Post(s"/$RootPath/${AccountSettings.Path}/login", Login(gsm, "fake")) ~> routes ~> check {
         status shouldEqual StatusCodes.Unauthorized
         responseAs[AccountErrorMessage].message shouldEqual LoginAndPasswordNotMatched.message
       }
     }
     "disable account after n login failures" in {
-      Post(s"/$RootPath/${AccountSettings.Path}/login", Login(gsm, password)) ~> mainRoutes(
-        typedSystem()
-      ) // reset number of failures
+      Post(
+        s"/$RootPath/${AccountSettings.Path}/login",
+        Login(gsm, password)
+      ) ~> routes // reset number of failures
       (0 until AccountSettings.MaxLoginFailures) // max number of failures
-        .map(_ =>
-          Post(s"/$RootPath/${AccountSettings.Path}/login", Login(gsm, "fake")) ~> mainRoutes(
-            typedSystem()
-          )
-        )
-      Post(s"/$RootPath/${AccountSettings.Path}/login", Login(gsm, "fake")) ~> mainRoutes(
-        typedSystem()
-      ) ~> check {
+        .map(_ => Post(s"/$RootPath/${AccountSettings.Path}/login", Login(gsm, "fake")) ~> routes)
+      Post(s"/$RootPath/${AccountSettings.Path}/login", Login(gsm, "fake")) ~> routes ~> check {
         status shouldEqual StatusCodes.Unauthorized
         responseAs[AccountErrorMessage].message shouldEqual AccountDisabled.message
       }
@@ -317,9 +370,7 @@ trait AccountRouteSpec[
         status shouldEqual StatusCodes.OK
         httpHeaders = extractHeaders(headers)
       }
-      withHeaders(Post(s"/$RootPath/${AccountSettings.Path}/logout")) ~> mainRoutes(
-        typedSystem()
-      ) ~> check {
+      withHeaders(Post(s"/$RootPath/${AccountSettings.Path}/logout")) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
         httpHeaders = extractHeaders(headers)
       }
@@ -336,9 +387,7 @@ trait AccountRouteSpec[
         status shouldEqual StatusCodes.OK
         httpHeaders = extractHeaders(headers)
       }
-      withHeaders(Post(s"/$RootPath/${AccountSettings.Path}/unsubscribe")) ~> mainRoutes(
-        typedSystem()
-      ) ~> check {
+      withHeaders(Post(s"/$RootPath/${AccountSettings.Path}/unsubscribe")) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
         responseAs[AV].status shouldEqual AccountStatus.Deleted
         httpHeaders = extractHeaders(headers)

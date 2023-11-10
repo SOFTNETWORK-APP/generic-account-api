@@ -234,6 +234,11 @@ trait AccountServiceEndpoints[SU]
                 val session = Session(account.uuid)
                 session += (Session.adminKey, account.isAdmin)
                 session += (Session.anonymousKey, false)
+                account.currentProfile match {
+                  case Some(profile) =>
+                    session += (profileKey, profile.name)
+                  case _ =>
+                }
                 Right((account.view.asInstanceOf[AV], Some(session)))
               case other => Left(resultToApiError(other))
             }

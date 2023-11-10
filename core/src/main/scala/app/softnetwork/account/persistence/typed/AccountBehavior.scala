@@ -3,7 +3,7 @@ package app.softnetwork.account.persistence.typed
 import _root_.akka.actor.typed.scaladsl.{ActorContext, TimerScheduler}
 import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.persistence.typed.scaladsl.Effect
-import app.softnetwork.security.Sha512Encryption
+import app.softnetwork.security.{sha256, Sha512Encryption}
 import org.apache.commons.text.StringEscapeUtils
 import org.slf4j.Logger
 import app.softnetwork.persistence.typed._
@@ -26,7 +26,6 @@ import app.softnetwork.scheduler.message.SchedulerEvents.ExternalSchedulerEvent
 import app.softnetwork.scheduler.model.Schedule
 
 import java.time.Instant
-import scala.concurrent.ExecutionContextExecutor
 import scala.language.{implicitConversions, postfixOps}
 import scala.reflect.ClassTag
 
@@ -42,15 +41,19 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
 
   protected val rules: Password.PasswordRules = passwordRules()
 
-  protected def createAccount(entityId: String, cmd: SignUp): Option[T]
+  protected def createAccount(entityId: String, cmd: SignUp)(implicit
+    context: ActorContext[AccountCommand]
+  ): Option[T]
 
   protected def createProfileUpdatedEvent(
     uuid: String,
     profile: P,
     loginUpdated: Option[Boolean] = None
-  ): ProfileUpdatedEvent[P]
+  )(implicit context: ActorContext[AccountCommand]): ProfileUpdatedEvent[P]
 
-  protected def createAccountCreatedEvent(account: T): AccountCreatedEvent[T]
+  protected def createAccountCreatedEvent(account: T)(implicit
+    context: ActorContext[AccountCommand]
+  ): AccountCreatedEvent[T]
 
   /** @return
     *   node role required to start this actor
@@ -108,7 +111,6 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
   ): Effect[ExternalSchedulerEvent, Option[T]] = {
     implicit val log: Logger = context.log
     implicit val system: ActorSystem[Nothing] = context.system
-    implicit val ec: ExecutionContextExecutor = system.executionContext
     command match {
 
       case cmd: InitAdminAccount =>
@@ -297,6 +299,234 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
           state,
           replyTo
         )
+
+      case cmd: GenerateAuthorizationCode => // response_type=code
+        state match {
+          case Some(account) if account.status.isActive =>
+            import cmd._
+            account.applications.find(_.clientId == clientId) match {
+//              case Some(application) if application.authorizationCode.exists(!_.expired) =>
+//                Effect.none.thenRun(_ => AuthorizationCodeAlreadyExists ~> replyTo)
+              case _ =>
+                val authorizationCode =
+                  generator.generateAuthorizationCode(
+                    clientId,
+                    scope,
+                    redirectUri,
+                    None
+                  )
+                accountKeyDao.addAccountKey(authorizationCode.code, entityId)
+                val application: Application = account.applications
+                  .find(_.clientId == clientId)
+                  .getOrElse(
+                    Application.defaultInstance
+                      .withClientId(clientId)
+                      .copy(redirectUri = redirectUri)
+                  )
+                  .withAuthorizationCode(
+                    authorizationCode.copy(code = sha256(authorizationCode.code))
+                  )
+                Effect
+                  .persist(
+                    ApplicationsUpdatedEvent(
+                      entityId,
+                      Instant.now(),
+                      account.applications.filterNot(_.clientId == clientId) :+ application
+                    )
+                  )
+                  .thenRun(_ => AuthorizationCodeGenerated(authorizationCode) ~> replyTo)
+            }
+
+          case Some(account) if account.status.isDisabled =>
+            Effect.none.thenRun(_ => AccountDisabled ~> replyTo)
+
+          case Some(account) if account.status.isDeleted =>
+            Effect.none.thenRun(_ => AccountDeleted(account) ~> replyTo)
+
+          case _ => Effect.none.thenRun(_ => AccountNotFound ~> replyTo)
+        }
+
+      case cmd: GenerateAccessToken => // grant_type=authorization_code
+        state match {
+          case Some(account) if account.status.isActive =>
+            import cmd._
+            account.applications.find(_.clientId == clientId) match {
+              case Some(application) if application.accessToken.exists(!_.expired) =>
+                Effect.none.thenRun(_ => AccessTokenAlreadyExists ~> replyTo)
+
+              case Some(application) =>
+                application.authorizationCode match {
+                  case Some(authorizationCode) if authorizationCode.expired =>
+                    Effect.none.thenRun(_ => CodeExpired ~> replyTo)
+
+                  case Some(authorizationCode) if authorizationCode.code != sha256(code) =>
+                    // an authorization code exists but does not match
+                    // it may be a replay attack
+                    // the authorization code should be considered corrupted and thus removed
+                    accountKeyDao.removeAccountKey(code)
+                    accountKeyDao.removeAccountKey(authorizationCode.code)
+                    Effect
+                      .persist(
+                        ApplicationsUpdatedEvent(
+                          entityId,
+                          Instant.now(),
+                          account.applications.filterNot(_.clientId == clientId) :+ application
+                            .copy(authorizationCode = None)
+                        )
+                      )
+                      .thenRun(_ => InvalidCode ~> replyTo)
+
+                  case Some(authorizationCode)
+                      if authorizationCode.redirectUri
+                        .getOrElse("") != cmd.redirectUri.getOrElse("") =>
+                    // an authorization code exists but redirect uri does not match
+                    // it may be a replay attack
+                    // the authorization code should be considered corrupted and thus removed
+                    accountKeyDao.removeAccountKey(authorizationCode.code)
+                    Effect
+                      .persist(
+                        ApplicationsUpdatedEvent(
+                          entityId,
+                          Instant.now(),
+                          account.applications.filterNot(_.clientId == clientId) :+ application
+                            .copy(authorizationCode = None)
+                        )
+                      )
+                      .thenRun(_ => InvalidRedirection ~> replyTo)
+
+                  case Some(authorizationCode) =>
+                    val accessToken =
+                      generator.generateAccessToken(
+                        account.primaryPrincipal.value,
+                        authorizationCode.scope
+                      )
+                    accountKeyDao.removeAccountKey(authorizationCode.code)
+                    accountKeyDao.addAccountKey(accessToken.token, entityId)
+                    accountKeyDao.addAccountKey(accessToken.refreshToken, entityId)
+                    Effect
+                      .persist(
+                        ApplicationsUpdatedEvent(
+                          entityId,
+                          Instant.now(),
+                          account.applications.filterNot(_.clientId == clientId) :+ application
+                            .withAccessToken(
+                              accessToken.copy(
+                                token = sha256(accessToken.token),
+                                refreshToken = sha256(accessToken.refreshToken)
+                              )
+                            )
+                            .copy(authorizationCode = None)
+                        )
+                      )
+                      .thenRun(_ => AccessTokenGenerated(accessToken) ~> replyTo)
+
+                  case _ =>
+                    accountKeyDao.removeAccountKey(code)
+                    Effect.none.thenRun(_ => CodeNotFound ~> replyTo)
+                }
+
+              case _ =>
+                accountKeyDao.removeAccountKey(code)
+                Effect.none.thenRun(_ => ApplicationNotFound ~> replyTo)
+            }
+
+          case Some(account) if account.status.isDisabled =>
+            Effect.none.thenRun(_ => AccountDisabled ~> replyTo)
+
+          case Some(account) if account.status.isDeleted =>
+            Effect.none.thenRun(_ => AccountDeleted(account) ~> replyTo)
+
+          case _ => Effect.none.thenRun(_ => AccountNotFound ~> replyTo)
+        }
+
+      case cmd: RefreshAccessToken => // grant_type=refresh_token
+        state match {
+          case Some(account) if account.status.isActive =>
+            import cmd._
+            account.applications.find(
+              _.accessToken.map(_.refreshToken).getOrElse("") == sha256(refreshToken)
+            ) match {
+              case Some(application) =>
+                val accessToken =
+                  generator.generateAccessToken(
+                    account.primaryPrincipal.value,
+                    application.accessToken.flatMap(_.scope)
+                  )
+                accountKeyDao.addAccountKey(accessToken.token, entityId)
+                accountKeyDao.addAccountKey(accessToken.refreshToken, entityId)
+                Effect
+                  .persist(
+                    ApplicationsUpdatedEvent(
+                      entityId,
+                      Instant.now(),
+                      account.applications
+                        .filterNot(_.clientId == application.clientId) :+ application
+                        .withAccessToken(
+                          accessToken.copy(
+                            token = sha256(accessToken.token),
+                            refreshToken = sha256(accessToken.refreshToken)
+                          )
+                        )
+                    )
+                  )
+                  .thenRun(_ => AccessTokenRefreshed(accessToken) ~> replyTo)
+
+              case _ =>
+                accountKeyDao.removeAccountKey(refreshToken)
+                Effect.none.thenRun(_ => ApplicationNotFound ~> replyTo)
+            }
+
+          case Some(account) if account.status.isDisabled =>
+            Effect.none.thenRun(_ => AccountDisabled ~> replyTo)
+
+          case Some(account) if account.status.isDeleted =>
+            Effect.none.thenRun(_ => AccountDeleted(account) ~> replyTo)
+
+          case _ => Effect.none.thenRun(_ => AccountNotFound ~> replyTo)
+        }
+
+      case cmd: OAuth =>
+        state match {
+          case Some(account) if account.status.isActive =>
+            import cmd._
+            account.applications.find(
+              _.accessToken.map(_.token).getOrElse("") == sha256(token)
+            ) match {
+              case Some(application) =>
+                application.accessToken match {
+                  case Some(accessToken) if accessToken.expired =>
+                    Effect.none.thenRun(_ => TokenExpired ~> replyTo)
+
+                  case Some(_) =>
+                    Effect
+                      .persist(
+                        loginSucceeded(entityId, state) :+
+                        LoginSucceeded(
+                          entityId,
+                          Instant.now(),
+                          None
+                        )
+                      )
+                      .thenRun(state => LoginSucceededResult(state.get) ~> replyTo)
+
+                  case _ =>
+                    accountKeyDao.removeAccountKey(token)
+                    Effect.none.thenRun(_ => TokenNotFound ~> replyTo)
+                }
+
+              case _ =>
+                accountKeyDao.removeAccountKey(token)
+                Effect.none.thenRun(_ => ApplicationNotFound ~> replyTo)
+            }
+
+          case Some(account) if account.status.isDisabled =>
+            Effect.none.thenRun(_ => AccountDisabled ~> replyTo)
+
+          case Some(account) if account.status.isDeleted =>
+            Effect.none.thenRun(_ => AccountDeleted(account) ~> replyTo)
+
+          case _ => Effect.none.thenRun(_ => AccountNotFound ~> replyTo)
+        }
 
       /** handle login * */
       case cmd: Login =>
@@ -549,6 +779,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
       case _: Unsubscribe =>
         state match {
           case Some(_) =>
+            // TODO remove all account keys
             Effect
               .persist(
                 accountUnsubscribed(entityId, state) :+ AccountDeletedEvent(entityId)
@@ -844,6 +1075,17 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
         } else { // wrong password
           val nbLoginFailures = account.nbLoginFailures + 1
           val disabled = nbLoginFailures > maxLoginFailures // disable account
+          if (disabled) {
+            account.applications.foreach(application => {
+              application.authorizationCode.foreach(code => {
+                accountKeyDao.removeAccountKey(code.code)
+              })
+              application.accessToken.foreach(token => {
+                accountKeyDao.removeAccountKey(token.token)
+                accountKeyDao.removeAccountKey(token.refreshToken)
+              })
+            })
+          }
           val notifications: Seq[ExternalEntityToNotificationEvent] =
             if (disabled && !account.status.isDisabled) {
               sendAccountDisabled(generateUUID(), account)
@@ -857,7 +1099,17 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                    AccountDisabledEvent(
                      entityId,
                      nbLoginFailures
-                   ).withLastUpdated(Instant.now())
+                   ).withLastUpdated(Instant.now()),
+                   ApplicationsUpdatedEvent(
+                     entityId,
+                     Instant.now(),
+                     account.applications.map(
+                       _.copy(
+                         authorizationCode = None,
+                         accessToken = None
+                       )
+                     )
+                   )
                  )
                else {
                  List(
@@ -1074,6 +1326,14 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
         state.map(
           _.withLastLogout(lastLogout)
             .withLastUpdated(lastLogout)
+            .asInstanceOf[T]
+        )
+
+      case evt: ApplicationsUpdatedEvent =>
+        import evt._
+        state.map(
+          _.withApplications(applications)
+            .withLastUpdated(lastUpdated)
             .asInstanceOf[T]
         )
 

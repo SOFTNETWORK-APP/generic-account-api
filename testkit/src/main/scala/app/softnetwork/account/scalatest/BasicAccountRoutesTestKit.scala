@@ -8,7 +8,12 @@ import app.softnetwork.account.model.{
   DefaultAccountView,
   DefaultProfileView
 }
-import app.softnetwork.account.service.{AccountService, MockBasicAccountService}
+import app.softnetwork.account.service.{
+  AccountService,
+  MockBasicAccountService,
+  MockOAuthService,
+  OAuthService
+}
 import app.softnetwork.persistence.schema.SchemaProvider
 import app.softnetwork.session.CsrfCheck
 import app.softnetwork.session.scalatest.{
@@ -35,6 +40,8 @@ trait BasicAccountRoutesTestKit
     DefaultAccountView[DefaultProfileView, DefaultAccountDetailsView]
   ] = system => MockBasicAccountService(system, sessionService(system))
 
+  override def oauthService: ActorSystem[_] => OAuthService = system =>
+    MockOAuthService(system, sessionService(system))
 }
 
 trait OneOfCookieSessionBasicAccountRoutesTestKit

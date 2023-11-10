@@ -32,6 +32,13 @@ object AccountSettings extends StrictLogging {
 
   val ActivationTokenExpirationTime: Int = config.getInt("auth.activation.token.expirationTime")
 
+  val OAuthPath: String = config.getString("auth.oauth.path")
+
+  val AccessTokenExpirationTime: Int = config.getInt("auth.oauth.access.token.expirationTime")
+
+  val AuthorizationCodeExpirationTime: Int =
+    config.getInt("auth.oauth.authorization.code.expirationTime")
+
   val VerificationCodeSize: Int = config.getInt("auth.verification.code.size")
 
   val VerificationCodeExpirationTime: Int = config.getInt("auth.verification.code.expirationTime")

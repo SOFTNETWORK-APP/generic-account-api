@@ -1,15 +1,13 @@
 package app.softnetwork.account.service
 
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
-import akka.http.scaladsl.server.{Directives, Route}
-import akka.http.scaladsl.server.directives.Credentials
+import akka.http.scaladsl.server.{AuthenticationFailedRejection, RejectionHandler, Route}
 import akka.http.scaladsl.unmarshalling.Unmarshaller
 import com.softwaremill.session.CsrfDirectives._
 import com.softwaremill.session.CsrfOptions._
 import com.typesafe.scalalogging.StrictLogging
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import app.softnetwork.api.server._
-import app.softnetwork.concurrent.Completion.AwaitCompletion
 import app.softnetwork.persistence.typed.CommandTypeKey
 import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.message._
@@ -21,15 +19,13 @@ import org.json4s.jackson.Serialization
 import org.json4s.{jackson, Formats}
 
 import scala.language.implicitConversions
-import scala.util.{Failure, Success}
 import Session._
 import app.softnetwork.persistence._
 
 /** Created by smanciot on 23/04/2020.
   */
 trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountView[PV, DV]]
-    extends BaseAccountService
-    with Directives
+    extends AkkaAccountService
     with DefaultComplete
     with Json4sSupport
     with StrictLogging
@@ -169,15 +165,27 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
   lazy val basic: Route = path("basic") {
     implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
     post {
-      authenticateBasic(AccountSettings.Realm, BasicAuthAuthenticator) { account =>
-        // create a new session
-        val session = Session(account.uuid)
-        session += (Session.adminKey, account.isAdmin)
-        session += (Session.anonymousKey, false)
-        service.setSession(session) {
-          // create a new anti csrf token
-          setNewCsrfToken(checkHeader) {
-            complete(HttpResponse(StatusCodes.OK, entity = account.view.asInstanceOf[AV]))
+      handleRejections(
+        RejectionHandler
+          .newBuilder()
+          .handleAll[AuthenticationFailedRejection](authenticationFailedRejectionHandler)
+          .result()
+      ) {
+        authenticateBasicAsync(AccountSettings.Realm, basicAuth) { account =>
+          // create a new session
+          val session = Session(account.uuid)
+          session += (Session.adminKey, account.isAdmin)
+          session += (Session.anonymousKey, false)
+          account.currentProfile match {
+            case Some(profile) =>
+              session += (profileKey, profile.name)
+            case _ =>
+          }
+          service.setSession(session) {
+            // create a new anti csrf token
+            setNewCsrfToken(checkHeader) {
+              complete(HttpResponse(StatusCodes.OK, entity = account.view.asInstanceOf[AV]))
+            }
           }
         }
       }
@@ -438,19 +446,4 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
     }
   }
 
-  private def BasicAuthAuthenticator(credentials: Credentials): Option[Account] = {
-    credentials match {
-      case p @ Credentials.Provided(_) =>
-        run(p.identifier, BasicAuth(p)) await {
-          case r: LoginSucceededResult => Some(r.account)
-          case _                       => None
-        } match {
-          case Failure(exception) =>
-            logger.error(exception.getMessage, exception)
-            None
-          case Success(value) => value
-        }
-      case _ => None
-    }
-  }
 }

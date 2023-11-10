@@ -3,7 +3,7 @@ package app.softnetwork.account.launch
 import akka.actor.typed.ActorSystem
 import app.softnetwork.account.model.{Account, AccountDecorator, Profile, ProfileDecorator}
 import app.softnetwork.account.serialization.accountFormats
-import app.softnetwork.account.service.AccountServiceEndpoints
+import app.softnetwork.account.service.{AccountServiceEndpoints, OAuthServiceEndpoints}
 import app.softnetwork.api.server.{ApiEndpoints, Endpoint}
 import app.softnetwork.persistence.schema.SchemaProvider
 import app.softnetwork.session.CsrfCheck
@@ -20,9 +20,12 @@ trait AccountEndpoints[
 
   def accountEndpoints: ActorSystem[_] => AccountServiceEndpoints[SU]
 
+  def oauthEndpoints: ActorSystem[_] => OAuthServiceEndpoints
+
   override def endpoints: ActorSystem[_] => List[Endpoint] =
     system =>
       List(
-        accountEndpoints(system)
+        accountEndpoints(system),
+        oauthEndpoints(system)
       )
 }

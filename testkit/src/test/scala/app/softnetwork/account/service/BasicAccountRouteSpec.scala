@@ -45,6 +45,8 @@ trait BasicAccountRouteSpec
     BasicAccountProfile.defaultInstance
       .withName("name")
       .withType(ProfileType.CUSTOMER)
+      .withFirstName(firstName)
+      .withLastName(lastName)
 
 }
 

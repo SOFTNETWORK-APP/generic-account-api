@@ -3,7 +3,12 @@ package app.softnetwork.account.scalatest
 import akka.actor.typed.ActorSystem
 import app.softnetwork.account.message.BasicAccountSignUp
 import app.softnetwork.account.model.{BasicAccount, BasicAccountProfile}
-import app.softnetwork.account.service.{AccountServiceEndpoints, MockBasicAccountServiceEndpoints}
+import app.softnetwork.account.service.{
+  AccountServiceEndpoints,
+  MockBasicAccountServiceEndpoints,
+  MockOAuthServiceEndpoints,
+  OAuthServiceEndpoints
+}
 import app.softnetwork.persistence.schema.SchemaProvider
 import app.softnetwork.session.scalatest.{
   OneOffCookieSessionEndpointsTestKit,
@@ -19,6 +24,9 @@ trait BasicAccountEndpointsTestKit
   _: SchemaProvider with CsrfCheck =>
   override def accountEndpoints: ActorSystem[_] => AccountServiceEndpoints[BasicAccountSignUp] =
     system => MockBasicAccountServiceEndpoints(system, sessionEndpoints(system))
+
+  override def oauthEndpoints: ActorSystem[_] => OAuthServiceEndpoints =
+    system => MockOAuthServiceEndpoints(system, sessionEndpoints(system))
 }
 
 trait OneOfCookieSessionBasicAccountEndpointsTestKit
