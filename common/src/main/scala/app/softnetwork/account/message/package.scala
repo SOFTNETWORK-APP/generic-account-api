@@ -299,4 +299,8 @@ package object message {
       extends AccountErrorMessage("AuthorizationCodeAlreadyExists")
 
   case object ApplicationNotFound extends AccountErrorMessage("ApplicationNotFound")
+
+  case object BasicAuthenticationFailed extends AccountErrorMessage("Basic authentication failed")
+
+  case object BearerAuthenticationFailed extends AccountErrorMessage("Bearer authentication failed")
 }
