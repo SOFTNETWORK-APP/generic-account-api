@@ -8,13 +8,14 @@ import app.softnetwork.account.message.SignUp
 import app.softnetwork.account.model.{Account, AccountDecorator, Profile, ProfileDecorator}
 import app.softnetwork.persistence.launch.PersistentEntity
 import app.softnetwork.persistence.query.EventProcessorStream
+import app.softnetwork.session.service.SessionMaterials
 import org.scalatest.Suite
 
 trait AccountTestKit[
   T <: Account with AccountDecorator,
   P <: Profile with ProfileDecorator
 ] extends AccountGuardian[T, P]
-    with AllNotificationsTestKit { _: Suite =>
+    with AllNotificationsTestKit { _: Suite with SessionMaterials =>
   implicit lazy val tsystem: ActorSystem[_] = typedSystem()
 
   /** @return

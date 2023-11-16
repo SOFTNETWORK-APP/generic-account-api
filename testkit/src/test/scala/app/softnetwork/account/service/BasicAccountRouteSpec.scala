@@ -22,6 +22,7 @@ import app.softnetwork.account.scalatest.{
 }
 import app.softnetwork.api.server.ApiRoutes
 import app.softnetwork.persistence.ManifestWrapper
+import app.softnetwork.session.service.{BasicSessionMaterials, SessionMaterials}
 import org.slf4j.{Logger, LoggerFactory}
 
 /** Created by smanciot on 22/03/2018.
@@ -35,6 +36,7 @@ trait BasicAccountRouteSpec
       DefaultAccountView[DefaultProfileView, DefaultAccountDetailsView]
     ]
     with BasicAccountRouteTestKit
+    with SessionMaterials
     with ManifestWrapper[DefaultAccountView[DefaultProfileView, DefaultAccountDetailsView]] {
   _: ApiRoutes =>
 
@@ -52,32 +54,40 @@ trait BasicAccountRouteSpec
 
 class OneOfCookieSessionBasicAccountRoutesSpec
     extends BasicAccountRouteSpec
-    with OneOfCookieSessionBasicAccountRoutesTestKit {}
+    with OneOfCookieSessionBasicAccountRoutesTestKit
+    with BasicSessionMaterials
 
 class OneOfHeaderSessionBasicAccountRoutesSpec
     extends BasicAccountRouteSpec
-    with OneOfHeaderSessionBasicAccountRoutesTestKit {}
+    with OneOfHeaderSessionBasicAccountRoutesTestKit
+    with BasicSessionMaterials
 
 class RefreshableCookieSessionBasicAccountRoutesSpec
     extends BasicAccountRouteSpec
-    with RefreshableCookieSessionBasicAccountRoutesTestKit {}
+    with RefreshableCookieSessionBasicAccountRoutesTestKit
+    with BasicSessionMaterials
 
 class RefreshableHeaderSessionBasicAccountRoutesSpec
     extends BasicAccountRouteSpec
-    with RefreshableHeaderSessionBasicAccountRoutesTestKit {}
+    with RefreshableHeaderSessionBasicAccountRoutesTestKit
+    with BasicSessionMaterials
 
 class OneOfCookieSessionBasicAccountEndpointsSpec
     extends BasicAccountRouteSpec
-    with OneOfCookieSessionBasicAccountEndpointsTestKit {}
+    with OneOfCookieSessionBasicAccountEndpointsTestKit
+    with BasicSessionMaterials
 
 class OneOfHeaderSessionBasicAccountEndpointsSpec
     extends BasicAccountRouteSpec
-    with OneOfHeaderSessionBasicAccountEndpointsTestKit {}
+    with OneOfHeaderSessionBasicAccountEndpointsTestKit
+    with BasicSessionMaterials
 
 class RefreshableCookieSessionBasicAccountEndpointsSpec
     extends BasicAccountRouteSpec
-    with RefreshableCookieSessionBasicAccountEndpointsTestKit {}
+    with RefreshableCookieSessionBasicAccountEndpointsTestKit
+    with BasicSessionMaterials
 
 class RefreshableHeaderSessionBasicAccountEndpointsSpec
     extends BasicAccountRouteSpec
-    with RefreshableHeaderSessionBasicAccountEndpointsTestKit {}
+    with RefreshableHeaderSessionBasicAccountEndpointsTestKit
+    with BasicSessionMaterials

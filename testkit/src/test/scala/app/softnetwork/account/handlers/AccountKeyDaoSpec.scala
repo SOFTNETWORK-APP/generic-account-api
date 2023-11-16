@@ -3,11 +3,15 @@ package app.softnetwork.account.handlers
 import org.scalatest.wordspec.AnyWordSpecLike
 import app.softnetwork.account.scalatest.BasicAccountTestKit
 import AccountKeyDao._
+import app.softnetwork.session.service.BasicSessionMaterials
 import org.slf4j.{Logger, LoggerFactory}
 
 /** Created by smanciot on 19/04/2020.
   */
-class AccountKeyDaoSpec extends AnyWordSpecLike with BasicAccountTestKit {
+class AccountKeyDaoSpec
+    extends AnyWordSpecLike
+    with BasicAccountTestKit
+    with BasicSessionMaterials {
 
   lazy val log: Logger = LoggerFactory getLogger getClass.getName
 

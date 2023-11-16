@@ -6,11 +6,15 @@ import app.softnetwork.account.scalatest.BasicAccountTestKit
 import org.scalatest.wordspec.AnyWordSpecLike
 import app.softnetwork.persistence.message.CommandWrapper
 import AccountKeyBehavior._
+import app.softnetwork.session.service.BasicSessionMaterials
 import org.slf4j.{Logger, LoggerFactory}
 
 /** Created by smanciot on 19/04/2020.
   */
-class AccountKeyBehaviorSpec extends AnyWordSpecLike with BasicAccountTestKit {
+class AccountKeyBehaviorSpec
+    extends AnyWordSpecLike
+    with BasicAccountTestKit
+    with BasicSessionMaterials {
 
   lazy val log: Logger = LoggerFactory getLogger getClass.getName
 

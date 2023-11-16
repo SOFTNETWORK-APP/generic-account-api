@@ -14,22 +14,25 @@ import app.softnetwork.account.message._
 import app.softnetwork.account.model._
 import app.softnetwork.account.serialization._
 import org.softnetwork.session.model.Session
-import app.softnetwork.session.service.SessionService
+import app.softnetwork.session.service.SessionMaterials
 import org.json4s.jackson.Serialization
 import org.json4s.{jackson, Formats}
 
 import scala.language.implicitConversions
 import Session._
+import akka.actor.typed.ActorSystem
 import app.softnetwork.persistence._
+import com.softwaremill.session.SessionConfig
 
 /** Created by smanciot on 23/04/2020.
   */
 trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountView[PV, DV]]
-    extends AkkaAccountService
+    extends AccountServiceDirectives
     with DefaultComplete
     with Json4sSupport
     with StrictLogging
-    with ApiRoute { _: CommandTypeKey[AccountCommand] with ManifestWrapper[AV] =>
+    with ApiRoute {
+  _: CommandTypeKey[AccountCommand] with ManifestWrapper[AV] with SessionMaterials =>
 
   type SU
 
@@ -41,7 +44,9 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
 
   implicit def serialization: Serialization.type = jackson.Serialization
 
-  def service: SessionService
+  implicit def sessionConfig: SessionConfig
+
+  override implicit def ts: ActorSystem[_] = system
 
   val route: Route = {
     pathPrefix(AccountSettings.Path) {
@@ -65,7 +70,7 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
     implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
     post {
       pathEnd {
-        service.optionalSession { maybeSession =>
+        optionalSession(sc, gt) { maybeSession =>
           val uuid = maybeSession match {
             case Some(session) if session.anonymous && session.id.nonEmpty => session.id
             case _                                                         => generateUUID()
@@ -75,9 +80,9 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
             case r: AccountCreated =>
               val account = r.account
               // create a new session
-              val session = Session(account.uuid)
+              var session = Session(account.uuid)
               session += (Session.anonymousKey, true)
-              service.setSession(session) {
+              setSession(sc, st, session) {
                 // create a new anti csrf token
                 setNewCsrfToken(checkHeader) {
                   complete(
@@ -101,7 +106,7 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
     implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
     post {
       entity(asSignUp) { signUp =>
-        service.optionalSession { maybeSession =>
+        optionalSession(sc, gt) { maybeSession =>
           val uuid = maybeSession match {
             case Some(session) if session.anonymous && session.id.nonEmpty => session.id
             case _                                                         => generateUUID()
@@ -119,9 +124,9 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
                 )
               if (!AccountSettings.ActivationEnabled) {
                 // create a new session
-                val session = Session(account.uuid)
+                var session = Session(account.uuid)
                 session += (Session.anonymousKey, false)
-                service.setSession(session) {
+                setSession(sc, st, session) {
                   // create a new anti csrf token
                   setNewCsrfToken(checkHeader) {
                     completion
@@ -148,7 +153,7 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
           case r: AccountActivated =>
             val account = r.account
             // create a new session
-            service.setSession(Session(account.uuid)) {
+            setSession(sc, st, Session(account.uuid)) {
               // create a new anti csrf token
               setNewCsrfToken(checkHeader) {
                 complete(HttpResponse(StatusCodes.OK, entity = account.view.asInstanceOf[AV]))
@@ -173,7 +178,7 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
       ) {
         authenticateBasicAsync(AccountSettings.Realm, basicAuth) { account =>
           // create a new session
-          val session = Session(account.uuid)
+          var session = Session(account.uuid)
           session += (Session.adminKey, account.isAdmin)
           session += (Session.anonymousKey, false)
           account.currentProfile match {
@@ -181,7 +186,7 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
               session += (profileKey, profile.name)
             case _ =>
           }
-          service.setSession(session) {
+          setSession(sc, st, session) {
             // create a new anti csrf token
             setNewCsrfToken(checkHeader) {
               complete(HttpResponse(StatusCodes.OK, entity = account.view.asInstanceOf[AV]))
@@ -196,7 +201,7 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
     implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
     post {
       entity(as[Login]) { login =>
-        service.optionalSession { maybeSession =>
+        optionalSession(sc, gt) { maybeSession =>
           // execute Login
           run(
             login.login,
@@ -213,7 +218,7 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
             case r: LoginSucceededResult =>
               val account = r.account
               // create a new session
-              val session = Session(
+              var session = Session(
                 account.uuid
                 /** FIXME login.refreshable * */
               )
@@ -224,7 +229,7 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
                   session += (profileKey, profile.name)
                 case _ =>
               }
-              service.setSession(session) {
+              setSession(sc, st, session) {
                 // create a new anti csrf token
                 setNewCsrfToken(checkHeader) {
                   complete(HttpResponse(StatusCodes.OK, entity = account.view.asInstanceOf[AV]))
@@ -244,11 +249,11 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
     hmacTokenCsrfProtection(checkHeader) {
       post {
         // check if a session exists
-        service.requiredSession { session =>
+        requiredSession(sc, gt) { session =>
           run(session.id, Logout) completeWith {
             case _: LogoutSucceeded.type =>
               // invalidate session
-              service.invalidateSession {
+              invalidateSession(sc, gt) {
                 complete(HttpResponse(StatusCodes.OK, entity = Map[String, String]()))
               }
             case error: AccountErrorMessage =>
@@ -266,11 +271,11 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
     hmacTokenCsrfProtection(checkHeader) {
       post {
         // check if a session exists
-        service.requiredSession { session =>
+        requiredSession(sc, gt) { session =>
           run(session.id, Unsubscribe(session.id)) completeWith {
             case r: AccountDeleted =>
               // invalidate session
-              service.invalidateSession {
+              invalidateSession(sc, gt) {
                 complete(
                   HttpResponse(status = StatusCodes.OK, entity = r.account.view.asInstanceOf[AV])
                 )
@@ -345,9 +350,9 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
           run(reset.token, reset) completeWith {
             case r: PasswordReseted =>
               // create a new session
-              val session = Session(r.uuid)
+              var session = Session(r.uuid)
               session += (Session.anonymousKey, false)
-              service.setSession(session) {
+              setSession(sc, st, session) {
                 complete(HttpResponse(status = StatusCodes.OK))
               }
             case error: AccountErrorMessage =>
@@ -363,7 +368,7 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
     // check anti CSRF token
     hmacTokenCsrfProtection(checkHeader) {
       // check if a session exists
-      service.requiredSession { session =>
+      requiredSession(sc, gt) { session =>
         post {
           entity(as[DeviceRegistration]) { registration =>
             run(
@@ -398,7 +403,7 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
     // check anti CSRF token
     hmacTokenCsrfProtection(checkHeader) {
       // check if a session exists
-      service.requiredSession { session =>
+      requiredSession(sc, gt) { session =>
         post {
           entity(as[PasswordData]) { data =>
             import data._
@@ -426,7 +431,7 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
     // check anti CSRF token
     hmacTokenCsrfProtection(checkHeader) {
       // check if a session exists
-      service.requiredSession { session =>
+      requiredSession(sc, gt) { session =>
         post {
           entity(as[UpdateLogin]) { login =>
             run(session.id, login) completeWith {

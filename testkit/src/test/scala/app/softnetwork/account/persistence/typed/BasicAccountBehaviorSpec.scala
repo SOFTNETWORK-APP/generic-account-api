@@ -5,11 +5,15 @@ import app.softnetwork.persistence.message.CommandWrapper
 import app.softnetwork.account.message._
 import MockBasicAccountBehavior._
 import app.softnetwork.account.scalatest.BasicAccountTestKit
+import app.softnetwork.session.service.BasicSessionMaterials
 import org.slf4j.{Logger, LoggerFactory}
 
 /** Created by smanciot on 19/04/2020.
   */
-class BasicAccountBehaviorSpec extends AnyWordSpecLike with BasicAccountTestKit {
+class BasicAccountBehaviorSpec
+    extends AnyWordSpecLike
+    with BasicAccountTestKit
+    with BasicSessionMaterials {
 
   lazy val log: Logger = LoggerFactory getLogger getClass.getName
 

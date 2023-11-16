@@ -9,6 +9,7 @@ import app.softnetwork.account.service.AccountService
 import app.softnetwork.notification.model.Platform
 import app.softnetwork.persistence._
 import app.softnetwork.persistence.typed.CommandTypeKey
+import app.softnetwork.session.service.SessionMaterials
 import org.scalatest.wordspec.AnyWordSpecLike
 
 /** Created by smanciot on 18/04/2020.
@@ -21,7 +22,8 @@ trait AccountServiceSpec[
   AV <: AccountView[PV, DV]
 ] extends AccountService[PV, DV, AV]
     with AnyWordSpecLike
-    with AccountTestKit[T, P] { _: CommandTypeKey[AccountCommand] with ManifestWrapper[AV] =>
+    with AccountTestKit[T, P] {
+  _: CommandTypeKey[AccountCommand] with ManifestWrapper[AV] with SessionMaterials =>
 
   implicit lazy val system: ActorSystem[_] = typedSystem()
 

@@ -8,14 +8,24 @@ import akka.http.scaladsl.server.AuthenticationFailedRejection.{
 }
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directives, Route}
 import akka.http.scaladsl.server.directives.Credentials
-import app.softnetwork.account.message.{AccountCommand, BasicAuth, LoginSucceededResult, OAuth}
+import app.softnetwork.account.message.{
+  AccountCommand,
+  AccountCommandResult,
+  BasicAuth,
+  LoginSucceededResult,
+  OAuth
+}
 import app.softnetwork.account.model.Account
 import app.softnetwork.persistence.typed.CommandTypeKey
+import app.softnetwork.session.service.{ServiceWithSessionDirectives, SessionMaterials}
 
 import scala.concurrent.Future
 
-trait AkkaAccountService extends BaseAccountService with Directives {
-  _: CommandTypeKey[AccountCommand] =>
+trait AccountServiceDirectives
+    extends BaseAccountService
+    with ServiceWithSessionDirectives[AccountCommand, AccountCommandResult]
+    with Directives {
+  _: CommandTypeKey[AccountCommand] with SessionMaterials =>
 
   protected def basicAuth: Credentials => Future[Option[Account]] = {
     case p @ Credentials.Provided(_) =>

@@ -1,12 +1,14 @@
 package app.softnetwork.account.service
 
+import akka.actor.typed.ActorSystem
 import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.message._
 import app.softnetwork.account.model.AuthorizationCode
 import app.softnetwork.account.serialization.accountFormats
 import app.softnetwork.api.server.ApiErrors
 import app.softnetwork.persistence.typed.CommandTypeKey
-import app.softnetwork.session.service.ServiceWithSessionEndpoints
+import app.softnetwork.session.service.{ServiceWithSessionEndpoints, SessionMaterials}
+import com.softwaremill.session.SessionConfig
 import org.json4s.Formats
 import org.softnetwork.session.model.Session
 import org.softnetwork.session.model.Session.profileKey
@@ -25,7 +27,11 @@ import scala.language.implicitConversions
 trait OAuthServiceEndpoints
     extends BaseAccountService
     with ServiceWithSessionEndpoints[AccountCommand, AccountCommandResult] {
-  _: CommandTypeKey[AccountCommand] =>
+  _: CommandTypeKey[AccountCommand] with SessionMaterials =>
+
+  implicit def sessionConfig: SessionConfig
+
+  override implicit def ts: ActorSystem[_] = system
 
   import app.softnetwork.serialization.serialization
 
@@ -189,7 +195,7 @@ trait OAuthServiceEndpoints
               case r: LoginSucceededResult =>
                 val account = r.account
                 // create a new session
-                val session = Session(account.uuid)
+                var session = Session(account.uuid)
                 session += (Session.adminKey, account.isAdmin)
                 session += (Session.anonymousKey, false)
                 account.currentProfile match {

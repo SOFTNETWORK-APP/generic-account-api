@@ -1,6 +1,5 @@
 package app.softnetwork.account.service
 
-import akka.actor.typed.ActorSystem
 import app.softnetwork.account.handlers.BasicAccountTypeKey
 import app.softnetwork.account.message.{BasicAccountSignUp, SignUp}
 import app.softnetwork.account.model.{
@@ -8,14 +7,12 @@ import app.softnetwork.account.model.{
   DefaultAccountView,
   DefaultProfileView
 }
-import app.softnetwork.session.service.SessionEndpoints
-import org.slf4j.{Logger, LoggerFactory}
-import sttp.tapir.generic.auto._
+import app.softnetwork.session.service.SessionMaterials
 import sttp.tapir.Schema
 
 trait BasicAccountServiceEndpoints
     extends AccountServiceEndpoints[BasicAccountSignUp]
-    with BasicAccountTypeKey {
+    with BasicAccountTypeKey { _: SessionMaterials =>
 
   override implicit def toSignUp: BasicAccountSignUp => SignUp = identity
 
@@ -28,18 +25,4 @@ trait BasicAccountServiceEndpoints
   override type AV = DefaultAccountView[PV, DV]
 
   override implicit def AVSchema: Schema[AV] = Schema.derived
-}
-
-object BasicAccountServiceEndpoints {
-  def apply(
-    _system: ActorSystem[_],
-    _sessionEndpoints: SessionEndpoints
-  ): BasicAccountServiceEndpoints = {
-    new BasicAccountServiceEndpoints {
-      lazy val log: Logger = LoggerFactory getLogger getClass.getName
-      override implicit def system: ActorSystem[_] = _system
-      override def sessionEndpoints: SessionEndpoints = _sessionEndpoints
-      override protected val manifestWrapper: ManifestW = ManifestW()
-    }
-  }
 }

@@ -1,5 +1,6 @@
 package app.softnetwork.account.service
 
+import akka.actor.typed.ActorSystem
 import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.message._
 import app.softnetwork.account.model.{
@@ -13,7 +14,8 @@ import app.softnetwork.account.serialization.accountFormats
 import app.softnetwork.api.server.ApiErrors
 import app.softnetwork.persistence.{generateUUID, ManifestWrapper}
 import app.softnetwork.persistence.typed.CommandTypeKey
-import app.softnetwork.session.service.ServiceWithSessionEndpoints
+import app.softnetwork.session.service.{ServiceWithSessionEndpoints, SessionMaterials}
+import com.softwaremill.session.SessionConfig
 import org.json4s.Formats
 import org.softnetwork.session.model.Session
 import org.softnetwork.session.model.Session.profileKey
@@ -35,11 +37,15 @@ trait AccountServiceEndpoints[SU]
     extends BaseAccountService
     with ServiceWithSessionEndpoints[AccountCommand, AccountCommandResult]
     with ManifestWrapper[SU] {
-  _: CommandTypeKey[AccountCommand] =>
+  _: CommandTypeKey[AccountCommand] with SessionMaterials =>
 
   import app.softnetwork.serialization.serialization
 
   override implicit def formats: Formats = accountFormats
+
+  implicit def sessionConfig: SessionConfig
+
+  override implicit def ts: ActorSystem[_] = system
 
   override implicit def resultToApiError(result: AccountCommandResult): ApiErrors.ErrorInfo =
     result match {
@@ -99,7 +105,7 @@ trait AccountServiceEndpoints[SU]
                       case result: AccountCreated =>
                         val account = result.account
                         // create a new session
-                        val session = Session(account.uuid)
+                        var session = Session(account.uuid)
                         session += (Session.anonymousKey, true)
                         Right(
                           (
@@ -165,7 +171,7 @@ trait AccountServiceEndpoints[SU]
                         val account = result.account
                         if (!AccountSettings.ActivationEnabled) {
                           // create a new session
-                          val session = Session(account.uuid)
+                          var session = Session(account.uuid)
                           session += (Session.anonymousKey, false)
                           Right(
                             (
@@ -204,7 +210,7 @@ trait AccountServiceEndpoints[SU]
           partial.securityLogic(new FutureMonad())(inputs._1).flatMap {
             case Left(_) => Future.successful(Left(ApiErrors.Unauthorized("Unauthorized")))
             case Right(r) =>
-              val session = r._2
+              var session = r._2
               val login = inputs._2
               run(session.id, login).map {
                 case LoginUpdated => Right(r._1, session)
@@ -231,7 +237,7 @@ trait AccountServiceEndpoints[SU]
               case r: LoginSucceededResult =>
                 val account = r.account
                 // create a new session
-                val session = Session(account.uuid)
+                var session = Session(account.uuid)
                 session += (Session.adminKey, account.isAdmin)
                 session += (Session.anonymousKey, false)
                 account.currentProfile match {
@@ -294,7 +300,7 @@ trait AccountServiceEndpoints[SU]
                       case result: LoginSucceededResult =>
                         val account = result.account
                         // create a new session
-                        val session = Session(
+                        var session = Session(
                           account.uuid
                           /** FIXME login.refreshable * */
                         )
@@ -444,7 +450,7 @@ trait AccountServiceEndpoints[SU]
             run(reset.token, reset).map {
               case r: PasswordReseted =>
                 // create a new session
-                val session = Session(r.uuid)
+                var session = Session(r.uuid)
                 session += (Session.anonymousKey, false)
                 Right((), Some(session))
               case other => Left(resultToApiError(other))

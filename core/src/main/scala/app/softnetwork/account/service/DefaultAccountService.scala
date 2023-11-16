@@ -8,6 +8,7 @@ import app.softnetwork.account.model.{
 }
 import app.softnetwork.persistence.ManifestWrapper
 import app.softnetwork.persistence.typed.CommandTypeKey
+import app.softnetwork.session.service.SessionMaterials
 
 trait DefaultAccountService
     extends AccountService[
@@ -16,6 +17,6 @@ trait DefaultAccountService
       DefaultAccountView[DefaultProfileView, DefaultAccountDetailsView]
     ]
     with ManifestWrapper[DefaultAccountView[DefaultProfileView, DefaultAccountDetailsView]] {
-  _: CommandTypeKey[AccountCommand] =>
+  _: CommandTypeKey[AccountCommand] with SessionMaterials =>
 
 }

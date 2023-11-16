@@ -1,5 +1,6 @@
 package app.softnetwork.account.scalatest
 
+import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
 import app.softnetwork.account.config.AccountSettings.Path
 import app.softnetwork.account.message.{Login, Logout, SignUp}
@@ -8,6 +9,7 @@ import app.softnetwork.api.server.ApiRoutes
 import app.softnetwork.api.server.config.ServerSettings.RootPath
 import app.softnetwork.serialization._
 import app.softnetwork.session.scalatest.SessionTestKit
+import app.softnetwork.session.service.SessionMaterials
 import org.scalatest.Suite
 
 import scala.language.implicitConversions
@@ -16,7 +18,9 @@ trait AccountRouteTestKit[
   T <: Account with AccountDecorator,
   P <: Profile with ProfileDecorator
 ] extends SessionTestKit
-    with AccountTestKit[T, P] { _: Suite with ApiRoutes =>
+    with AccountTestKit[T, P] { _: Suite with ApiRoutes with SessionMaterials =>
+
+  override implicit lazy val ts: ActorSystem[_] = typedSystem()
 
   override def beforeAll(): Unit = {
     super.beforeAll()

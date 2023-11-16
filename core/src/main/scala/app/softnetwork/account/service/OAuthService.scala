@@ -7,7 +7,7 @@ import app.softnetwork.account.message._
 import app.softnetwork.account.serialization._
 import app.softnetwork.api.server._
 import app.softnetwork.persistence.typed.CommandTypeKey
-import app.softnetwork.session.service.SessionService
+import app.softnetwork.session.service.SessionMaterials
 import com.softwaremill.session.CsrfDirectives._
 import com.softwaremill.session.CsrfOptions._
 import com.typesafe.scalalogging.StrictLogging
@@ -16,16 +16,20 @@ import org.json4s.{jackson, Formats}
 import org.json4s.jackson.Serialization
 import org.softnetwork.session.model.Session
 import Session._
+import akka.actor.typed.ActorSystem
 import app.softnetwork.account.handlers.BasicAccountTypeKey
+import com.softwaremill.session.SessionConfig
 
 trait OAuthService
-    extends AkkaAccountService
+    extends AccountServiceDirectives
     with DefaultComplete
     with Json4sSupport
     with StrictLogging
-    with ApiRoute { _: CommandTypeKey[AccountCommand] =>
+    with ApiRoute { _: CommandTypeKey[AccountCommand] with SessionMaterials =>
 
-  def service: SessionService
+  implicit def sessionConfig: SessionConfig
+
+  override implicit def ts: ActorSystem[_] = system
 
   implicit def formats: Formats = accountFormats
 
@@ -44,7 +48,7 @@ trait OAuthService
           case "code" =>
             parameters("client_id", "redirect_uri".?, "scope".?, "state".?) {
               (clientId, redirectUri, scope, state) =>
-                service.optionalSession {
+                optionalSession(sc, gt) {
                   case Some(session) =>
                     hmacTokenCsrfProtection(checkHeader) {
                       generateCode(session.id, clientId, scope, redirectUri, state)
@@ -147,7 +151,7 @@ trait OAuthService
       ) {
         authenticateOAuth2Async(AccountSettings.Realm, oauth) { account =>
           // create a new session
-          val session = Session(account.uuid)
+          var session = Session(account.uuid)
           session += (Session.adminKey, account.isAdmin)
           session += (Session.anonymousKey, false)
           account.currentProfile match {
@@ -155,7 +159,7 @@ trait OAuthService
               session += (profileKey, profile.name)
             case _ =>
           }
-          service.setSession(session) {
+          setSession(sc, st, session) {
             // create a new anti csrf token
             setNewCsrfToken(checkHeader) {
               complete(
@@ -215,4 +219,4 @@ trait OAuthService
 
 }
 
-trait BasicOAuthService extends OAuthService with BasicAccountTypeKey
+trait BasicOAuthService extends OAuthService with BasicAccountTypeKey { _: SessionMaterials => }

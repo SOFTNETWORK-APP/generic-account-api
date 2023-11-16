@@ -13,20 +13,40 @@ import app.softnetwork.account.service.{
 import app.softnetwork.api.server.Endpoint
 import app.softnetwork.persistence.schema.SchemaProvider
 import app.softnetwork.session.CsrfCheck
-import app.softnetwork.session.service.SessionEndpoints
+import app.softnetwork.session.service.{SessionEndpoints, SessionMaterials}
+import com.softwaremill.session.{SessionConfig, SessionManager}
 import org.slf4j.{Logger, LoggerFactory}
+import org.softnetwork.session.model.Session
+
+import scala.concurrent.ExecutionContext
 
 trait BasicAccountEndpoints
     extends AccountEndpoints[BasicAccount, BasicAccountProfile, BasicAccountSignUp] {
   self: BasicAccountApi with SchemaProvider with CsrfCheck =>
   override def accountEndpoints: ActorSystem[_] => AccountServiceEndpoints[BasicAccountSignUp] =
-    system => BasicAccountServiceEndpoints(system, sessionEndpoints(system))
+    sys =>
+      new BasicAccountServiceEndpoints with SessionMaterials {
+        override implicit def manager(implicit
+          sessionConfig: SessionConfig
+        ): SessionManager[Session] = self.manager
+        override protected def sessionType: Session.SessionType = self.sessionType
+        override implicit def system: ActorSystem[_] = sys
+        override implicit lazy val ec: ExecutionContext = sys.executionContext
+        override implicit def sessionConfig: SessionConfig = self.sessionConfig
+        override protected val manifestWrapper: ManifestW = ManifestW()
+        override def log: Logger = LoggerFactory getLogger getClass.getName
+      }
 
   override def oauthEndpoints: ActorSystem[_] => OAuthServiceEndpoints =
     sys =>
-      new OAuthServiceEndpoints with BasicAccountTypeKey {
-        override def sessionEndpoints: SessionEndpoints = self.sessionEndpoints(system)
+      new OAuthServiceEndpoints with BasicAccountTypeKey with SessionMaterials {
+        override implicit def manager(implicit
+          sessionConfig: SessionConfig
+        ): SessionManager[Session] = self.manager
+        override protected def sessionType: Session.SessionType = self.sessionType
         override implicit def system: ActorSystem[_] = sys
+        override implicit lazy val ec: ExecutionContext = sys.executionContext
+        override implicit def sessionConfig: SessionConfig = self.sessionConfig
         override def log: Logger = LoggerFactory getLogger getClass.getName
       }
 

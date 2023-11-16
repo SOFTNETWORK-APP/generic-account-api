@@ -12,10 +12,16 @@ import app.softnetwork.api.server.{ApiRoutes, SwaggerEndpoint}
 import app.softnetwork.persistence.jdbc.query.{JdbcJournalProvider, JdbcOffsetProvider}
 import app.softnetwork.persistence.schema.SchemaProvider
 import app.softnetwork.session.CsrfCheck
-import app.softnetwork.session.service.SessionEndpoints
+import app.softnetwork.session.config.Settings
+import app.softnetwork.session.model.SessionManagers
+import app.softnetwork.session.service.{SessionEndpoints, SessionMaterials}
+import com.softwaremill.session.{SessionConfig, SessionManager}
 import com.typesafe.config.Config
 import org.slf4j.{Logger, LoggerFactory}
+import org.softnetwork.session.model.Session
 import sttp.tapir.swagger.SwaggerUIOptions
+
+import scala.concurrent.ExecutionContext
 
 trait BasicAccountApi extends AccountApplication[BasicAccount, BasicAccountProfile] {
   self: SchemaProvider with ApiRoutes with CsrfCheck =>
@@ -37,11 +43,23 @@ trait BasicAccountApi extends AccountApplication[BasicAccount, BasicAccountProfi
       override implicit def system: ActorSystem[_] = sys
     }
 
+  def sessionConfig: SessionConfig = Settings.Session.DefaultSessionConfig
+  override protected def sessionType: Session.SessionType =
+    Settings.Session.SessionContinuityAndTransport
+
+  override protected def manager(implicit sessionConfig: SessionConfig): SessionManager[Session] =
+    SessionManagers.basic
+
   def accountSwagger: ActorSystem[_] => SwaggerEndpoint = sys =>
-    new BasicAccountServiceEndpoints with SwaggerEndpoint {
+    new BasicAccountServiceEndpoints with SwaggerEndpoint with SessionMaterials {
       lazy val log: Logger = LoggerFactory getLogger getClass.getName
       override implicit def system: ActorSystem[_] = sys
-      override def sessionEndpoints: SessionEndpoints = self.sessionEndpoints(sys)
+      override implicit lazy val ec: ExecutionContext = sys.executionContext
+      override implicit def manager(implicit
+        sessionConfig: SessionConfig
+      ): SessionManager[Session] = self.manager
+      override protected def sessionType: Session.SessionType = self.sessionType
+      override implicit def sessionConfig: SessionConfig = self.sessionConfig
       override protected val manifestWrapper: ManifestW = ManifestW()
       override val applicationVersion: String = self.systemVersion()
       override val swaggerUIOptions: SwaggerUIOptions =
@@ -50,9 +68,17 @@ trait BasicAccountApi extends AccountApplication[BasicAccount, BasicAccountProfi
 
   def oauthSwagger: ActorSystem[_] => SwaggerEndpoint =
     sys =>
-      new OAuthServiceEndpoints with BasicAccountTypeKey with SwaggerEndpoint {
-        override def sessionEndpoints: SessionEndpoints = self.sessionEndpoints(sys)
+      new OAuthServiceEndpoints
+        with BasicAccountTypeKey
+        with SwaggerEndpoint
+        with SessionMaterials {
         override implicit def system: ActorSystem[_] = sys
+        override implicit lazy val ec: ExecutionContext = sys.executionContext
+        override implicit def manager(implicit
+          sessionConfig: SessionConfig
+        ): SessionManager[Session] = self.manager
+        override protected def sessionType: Session.SessionType = self.sessionType
+        override implicit def sessionConfig: SessionConfig = self.sessionConfig
         override def log: Logger = LoggerFactory getLogger getClass.getName
         override val applicationVersion: String = self.systemVersion()
         override val swaggerUIOptions: SwaggerUIOptions =
