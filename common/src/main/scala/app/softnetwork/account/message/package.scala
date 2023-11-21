@@ -31,6 +31,8 @@ package object message {
 
   case object SignUpAnonymous extends AccountCommand
 
+  case class SignUpOAuth(data: OAuthData) extends AccountCommand
+
   @SerialVersionUID(0L)
   case class Unsubscribe(uuid: String) extends AccountCommand
 
@@ -204,6 +206,9 @@ package object message {
     expires_in: Int,
     refresh_token: String
   )
+
+  case class OAuthSucceededResult(account: Account, application: Application)
+      extends AccountCommandResult
 
   case class Me(firstName: String, lastName: String, email: Option[String] = None)
 

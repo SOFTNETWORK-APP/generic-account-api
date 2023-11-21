@@ -248,6 +248,41 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
             }
         }
 
+      case cmd: SignUpOAuth =>
+        state match {
+          case Some(_) =>
+            Effect.none.thenRun(_ => AccountAlreadyExists ~> replyTo)
+          case _ =>
+            import cmd._
+            data.login match {
+              case Some(l) =>
+                createAccount(
+                  entityId,
+                  new SignUp {
+                    override val login: String = l
+                    override val password: String = AnonymousPassword
+                  }
+                ) match {
+                  case Some(account) =>
+                    import account._
+                    if (
+                      !secondaryPrincipals
+                        .exists(principal => lookupAccount(principal.value).isDefined)
+                    ) {
+                      Effect
+                        .persist(
+                          createAccountCreatedEvent(account)
+                        )
+                        .thenRun(_ => AccountCreated(account) ~> replyTo)
+                    } else {
+                      Effect.none.thenRun(_ => LoginAlreadyExists ~> replyTo)
+                    }
+                  case _ => Effect.none.thenRun(_ => LoginUnaccepted ~> replyTo)
+                }
+              case _ => Effect.none.thenRun(_ => LoginUnaccepted ~> replyTo)
+            }
+        }
+
       /** handle account activation * */
       case cmd: Activate =>
         import cmd._
@@ -507,7 +542,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                           None
                         )
                       )
-                      .thenRun(state => LoginSucceededResult(state.get) ~> replyTo)
+                      .thenRun(state => OAuthSucceededResult(state.get, application) ~> replyTo)
 
                   case _ =>
                     accountKeyDao.removeAccountKey(token)

@@ -34,11 +34,6 @@ object AccountSettings extends StrictLogging {
 
   val OAuthPath: String = config.getString("auth.oauth.path")
 
-  val AccessTokenExpirationTime: Int = config.getInt("auth.oauth.access.token.expirationTime")
-
-  val AuthorizationCodeExpirationTime: Int =
-    config.getInt("auth.oauth.authorization.code.expirationTime")
-
   val VerificationCodeSize: Int = config.getInt("auth.verification.code.size")
 
   val VerificationCodeExpirationTime: Int = config.getInt("auth.verification.code.expirationTime")
@@ -86,4 +81,13 @@ object AccountSettings extends StrictLogging {
   val VerificationEmailEnabled: Boolean = config.getBoolean("auth.verification.email.enabled")
 
   val AnonymousPassword: String = config.getString("auth.anonymous.password")
+
+  lazy val OAuthSettings: OAuthConfig =
+    Configs[OAuthConfig].get(config, "auth.oauth").toEither match {
+      case Left(configError) =>
+        logger.error(s"Something went wrong with the provided arguments $configError")
+        throw configError.configException
+      case Right(oauth) => oauth
+    }
+
 }

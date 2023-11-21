@@ -5,7 +5,9 @@ import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.message._
 import app.softnetwork.account.model.AuthorizationCode
 import app.softnetwork.account.serialization.accountFormats
+import app.softnetwork.account.spi.OAuth2Service
 import app.softnetwork.api.server.ApiErrors
+import app.softnetwork.persistence.generateUUID
 import app.softnetwork.persistence.typed.CommandTypeKey
 import app.softnetwork.session.service.{ServiceWithSessionEndpoints, SessionMaterials}
 import com.softwaremill.session.SessionConfig
@@ -23,6 +25,7 @@ import sttp.tapir.server.ServerEndpoint
 
 import scala.concurrent.Future
 import scala.language.implicitConversions
+import scala.util.{Failure, Success}
 
 trait OAuthServiceEndpoints
     extends BaseAccountService
@@ -53,12 +56,21 @@ trait OAuthServiceEndpoints
       case _                      => ApiErrors.BadRequest("Unknown")
     }
 
+  def challenge: WWWAuthenticateChallenge = WWWAuthenticateChallenge.basic(AccountSettings.Realm)
+
   val authorize: ServerEndpoint[Any with AkkaStreams, Future] =
     endpoint.get
       .in(AccountSettings.OAuthPath / "authorize")
       .description("OAuth2 authorize endpoint")
       .securityIn(
-        auth.basic[UsernamePassword](WWWAuthenticateChallenge.basic(AccountSettings.Realm))
+        challenge match {
+          case WWWAuthenticateChallenge(Basic.name, _) =>
+            auth.basic[UsernamePassword](challenge)
+          case WWWAuthenticateChallenge(Bearer.name, _) =>
+            auth.bearer[UsernamePassword](challenge)
+          case WWWAuthenticateChallenge(scheme, _) =>
+            auth.http[UsernamePassword](scheme, challenge)
+        }
       )
       .errorOut(ApiErrors.oneOfApiErrors)
       .serverSecurityLogicWithOutput(up =>
@@ -151,7 +163,7 @@ trait OAuthServiceEndpoints
                 Tokens(
                   r.accessToken.token,
                   r.accessToken.tokenType.toLowerCase(),
-                  AccountSettings.AccessTokenExpirationTime * 60,
+                  AccountSettings.OAuthSettings.accessToken.expirationTime * 60,
                   r.accessToken.refreshToken
                 )
               )
@@ -167,7 +179,7 @@ trait OAuthServiceEndpoints
                 Tokens(
                   r.accessToken.token,
                   r.accessToken.tokenType.toLowerCase(),
-                  AccountSettings.AccessTokenExpirationTime * 60,
+                  AccountSettings.OAuthSettings.accessToken.expirationTime * 60,
                   r.accessToken.refreshToken
                 )
               )
@@ -192,12 +204,14 @@ trait OAuthServiceEndpoints
           .out(jsonBody[Me])
           .serverSecurityLogicWithOutput(token =>
             run(token, OAuth(token)) map {
-              case r: LoginSucceededResult =>
+              case r: OAuthSucceededResult =>
                 val account = r.account
                 // create a new session
                 var session = Session(account.uuid)
                 session += (Session.adminKey, account.isAdmin)
                 session += (Session.anonymousKey, false)
+                session += ("client_id", r.application.clientId)
+                session += ("scope", r.application.accessToken.flatMap(_.scope).getOrElse(""))
                 account.currentProfile match {
                   case Some(profile) =>
                     session += (profileKey, profile.name)
@@ -221,13 +235,83 @@ trait OAuthServiceEndpoints
         )
       }
 
+  lazy val services: Seq[OAuth2Service] = OAuth2Service()
+
+  def signin(service: OAuth2Service): ServerEndpoint[Any with AkkaStreams, Future] =
+    endpoint.get
+      .in(AccountSettings.OAuthPath / service.networkName / "signin")
+      .description(s"OAuth2 ${service.networkName} signin endpoint")
+      .errorOut(ApiErrors.oneOfApiErrors)
+      .serverSecurityLogicWithOutput[Unit, Future](_ =>
+        ApiErrors.Found(service.authorizationUrl) match {
+          case Some(found) => Future.successful(Left(found))
+          case _           => Future.successful(Left(ApiErrors.NotFound()))
+        }
+      )
+      .serverLogic(_ =>
+        _ =>
+          Future.successful(
+            Right(())
+          )
+      )
+
+  def backup(service: OAuth2Service): ServerEndpoint[Any with AkkaStreams, Future] =
+    setNewCsrfToken(checkMode) {
+      setSession(sc, st) {
+        endpoint.get
+          .in(AccountSettings.OAuthPath / service.networkName / "backup")
+          .description(s"OAuth2 ${service.networkName} backup endpoint")
+          .securityIn(query[String]("code").description("authorization code"))
+          .errorOut(ApiErrors.oneOfApiErrors)
+          .serverSecurityLogicWithOutput(code =>
+            service.userInfo(code) match {
+              case Success(s) =>
+                val data = service.extractData(s)
+                data.login match {
+                  case Some(login) =>
+                    lookup(login) flatMap {
+                      case Some(uuid) =>
+                        var session = Session(uuid)
+                        session += (Session.anonymousKey, false)
+                        session += ("provider", data.provider)
+                        session ++= data.data.toSeq
+                        Future.successful(
+                          Right((), Some(session))
+                        )
+                      case _ =>
+                        run(generateUUID(), SignUpOAuth(data)) map {
+                          case r: AccountCreated =>
+                            // create a new session
+                            var session = Session(r.account.uuid)
+                            session += (Session.anonymousKey, false)
+                            session += ("provider", data.provider)
+                            Right((), Some(session))
+                          case other => Left(resultToApiError(other))
+                        }
+                    }
+                  case _ =>
+                    log.error(s"login not found within $data for ${service.networkName}")
+                    Future.successful(Left(ApiErrors.InternalServerError()))
+                }
+              case Failure(f) =>
+                log.error(f.getMessage, f)
+                Future.successful(Left(ApiErrors.InternalServerError()))
+            }
+          )
+      }
+    }.serverLogic { _ => _ =>
+      Future.successful(
+        Right(())
+      )
+    }
+
   override lazy val endpoints
     : List[ServerEndpoint[AkkaStreams with capabilities.WebSockets, Future]] =
     List(
       authorize,
       token,
       me
-    )
+    ) ++ services.map(signin) ++ services.map(backup)
 
 }
 

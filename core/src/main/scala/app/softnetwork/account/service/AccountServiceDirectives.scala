@@ -13,9 +13,10 @@ import app.softnetwork.account.message.{
   AccountCommandResult,
   BasicAuth,
   LoginSucceededResult,
-  OAuth
+  OAuth,
+  OAuthSucceededResult
 }
-import app.softnetwork.account.model.Account
+import app.softnetwork.account.model.{Account, Application}
 import app.softnetwork.persistence.typed.CommandTypeKey
 import app.softnetwork.session.service.{ServiceWithSessionDirectives, SessionMaterials}
 
@@ -36,10 +37,10 @@ trait AccountServiceDirectives
     case _ => Future.successful(None)
   }
 
-  protected def oauth: Credentials => Future[Option[Account]] = {
+  protected def oauth: Credentials => Future[Option[(Account, Application)]] = {
     case _ @Credentials.Provided(token) =>
       run(token, OAuth(token)) map {
-        case r: LoginSucceededResult => Some(r.account)
+        case r: OAuthSucceededResult => Some((r.account, r.application))
         case _                       => None
       }
     case _ => Future.successful(None)

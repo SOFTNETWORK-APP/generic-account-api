@@ -54,6 +54,10 @@ trait AccountRouteSpec[
 
   protected var refreshToken: String = _
 
+  protected val client_id = "test"
+
+  protected val scope = "read"
+
   def profile: P
 
   "MainRoutes" should {
@@ -183,7 +187,7 @@ trait AccountRouteSpec[
     "generate authorization code with matching username and password" in {
       val validCredentials = BasicHttpCredentials(username, password)
       Get(
-        s"/$RootPath/${AccountSettings.OAuthPath}/authorize?response_type=code&client_id=test"
+        s"/$RootPath/${AccountSettings.OAuthPath}/authorize?response_type=code&client_id=$client_id&scope=$scope"
       ) ~> addCredentials(
         validCredentials
       ) ~> routes ~> check {
@@ -198,7 +202,7 @@ trait AccountRouteSpec[
         FormData(
           "grant_type"   -> "authorization_code",
           "code"         -> authorizationCode,
-          "client_id"    -> "test",
+          "client_id"    -> client_id,
           "redirect_uri" -> "" // http://localhost:8080"
         ).toEntity
       ).withProtocol(HttpProtocols.`HTTP/1.1`) ~> routes ~> check {
@@ -241,6 +245,20 @@ trait AccountRouteSpec[
         val me = responseAs[Me]
         me.firstName shouldBe firstName
         me.lastName shouldBe lastName
+      }
+    }
+    "signin using OAuth2" in {
+      Get(
+        s"/$RootPath/${AccountSettings.OAuthPath}/dummy/signin"
+      ) ~> routes ~> check {
+        status shouldEqual StatusCodes.Found
+      }
+    }
+    "authenticate using OAuth2" in {
+      Get(
+        s"/$RootPath/${AccountSettings.OAuthPath}/dummy/backup?code=1234"
+      ) ~> routes ~> check {
+        status shouldEqual StatusCodes.OK
       }
     }
   }

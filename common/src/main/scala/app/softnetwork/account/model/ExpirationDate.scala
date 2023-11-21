@@ -1,9 +1,6 @@
 package app.softnetwork.account.model
 
-import app.softnetwork.account.config.AccountSettings.{
-  AccessTokenExpirationTime,
-  AuthorizationCodeExpirationTime
-}
+import app.softnetwork.account.config.AccountSettings.OAuthSettings
 
 import java.security.SecureRandom
 import app.softnetwork.specification.{Rule, Specification}
@@ -72,7 +69,7 @@ trait AuthorizationCodeCompanion extends ExpirationToken {
       scope,
       redirectUri,
       state,
-      compute(AuthorizationCodeExpirationTime)
+      compute(OAuthSettings.authorizationCode.expirationTime)
     )
   }
 }
@@ -82,7 +79,7 @@ trait AccessTokenCompanion extends ExpirationToken {
   def apply(prefix: String, scope: Option[String]): AccessToken = {
     AccessToken.defaultInstance
       .withToken(generateToken(prefix))
-      .withExpirationDate(compute(AccessTokenExpirationTime))
+      .withExpirationDate(compute(OAuthSettings.accessToken.expirationTime))
       .withRefreshToken(generateToken(prefix))
       .copy(scope = scope)
   }
