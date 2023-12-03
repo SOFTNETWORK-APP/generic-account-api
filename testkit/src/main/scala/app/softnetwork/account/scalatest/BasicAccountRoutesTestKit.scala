@@ -16,6 +16,7 @@ import app.softnetwork.account.service.{
 }
 import app.softnetwork.persistence.schema.SchemaProvider
 import app.softnetwork.session.CsrfCheck
+import app.softnetwork.session.model.{SessionData, SessionDataCompanion, SessionDataDecorator}
 import app.softnetwork.session.scalatest.{
   OneOffCookieSessionServiceTestKit,
   OneOffHeaderSessionServiceTestKit,
@@ -23,69 +24,82 @@ import app.softnetwork.session.scalatest.{
   RefreshableHeaderSessionServiceTestKit
 }
 import app.softnetwork.session.service.SessionMaterials
-import com.softwaremill.session.{SessionConfig, SessionManager}
+import com.softwaremill.session.{RefreshTokenStorage, SessionConfig, SessionManager}
 import org.scalatest.Suite
 import org.slf4j.{Logger, LoggerFactory}
 import org.softnetwork.session.model.Session
 
 import scala.concurrent.ExecutionContext
 
-trait BasicAccountRoutesTestKit
+trait BasicAccountRoutesTestKit[SD <: SessionData with SessionDataDecorator[SD]]
     extends AccountRoutesTestKit[
       BasicAccount,
       BasicAccountProfile,
       DefaultProfileView,
       DefaultAccountDetailsView,
-      DefaultAccountView[DefaultProfileView, DefaultAccountDetailsView]
+      DefaultAccountView[DefaultProfileView, DefaultAccountDetailsView],
+      SD
     ] {
-  self: SchemaProvider with CsrfCheck with SessionMaterials =>
+  self: SchemaProvider with CsrfCheck with SessionMaterials[SD] =>
 
   implicit def sessionConfig: SessionConfig
 
+  implicit def companion: SessionDataCompanion[SD]
   override def accountService: ActorSystem[_] => AccountService[
     DefaultProfileView,
     DefaultAccountDetailsView,
-    DefaultAccountView[DefaultProfileView, DefaultAccountDetailsView]
+    DefaultAccountView[DefaultProfileView, DefaultAccountDetailsView],
+    SD
   ] =
     sys =>
-      new MockBasicAccountService with SessionMaterials {
+      new MockBasicAccountService[SD] with SessionMaterials[SD] {
         override implicit def manager(implicit
-          sessionConfig: SessionConfig
-        ): SessionManager[Session] = self.manager
+          sessionConfig: SessionConfig,
+          companion: SessionDataCompanion[SD]
+        ): SessionManager[SD] = self.manager
         override protected def sessionType: Session.SessionType = self.sessionType
         override implicit def system: ActorSystem[_] = sys
         override implicit lazy val ec: ExecutionContext = sys.executionContext
         override implicit def sessionConfig: SessionConfig = self.sessionConfig
         override protected val manifestWrapper: ManifestW = ManifestW()
         override def log: Logger = LoggerFactory getLogger getClass.getName
+        override implicit def refreshTokenStorage: RefreshTokenStorage[SD] =
+          self.refreshTokenStorage
+        override implicit def companion: SessionDataCompanion[SD] = self.companion
       }
 
-  override def oauthService: ActorSystem[_] => OAuthService =
+  override def oauthService: ActorSystem[_] => OAuthService[SD] =
     sys =>
-      new MockOAuthService with SessionMaterials {
+      new MockOAuthService[SD] with SessionMaterials[SD] {
         override implicit def manager(implicit
-          sessionConfig: SessionConfig
-        ): SessionManager[Session] = self.manager
+          sessionConfig: SessionConfig,
+          companion: SessionDataCompanion[SD]
+        ): SessionManager[SD] = self.manager
         override protected def sessionType: Session.SessionType = self.sessionType
         override implicit def system: ActorSystem[_] = sys
         override implicit lazy val ec: ExecutionContext = sys.executionContext
         override implicit def sessionConfig: SessionConfig = self.sessionConfig
         override def log: Logger = LoggerFactory getLogger getClass.getName
+        override implicit def refreshTokenStorage: RefreshTokenStorage[SD] =
+          self.refreshTokenStorage
+        override implicit def companion: SessionDataCompanion[SD] = self.companion
       }
 }
 
-trait OneOfCookieSessionBasicAccountRoutesTestKit
-    extends OneOffCookieSessionServiceTestKit
-    with BasicAccountRoutesTestKit { _: Suite with SessionMaterials => }
+trait OneOfCookieSessionBasicAccountRoutesTestKit[SD <: SessionData with SessionDataDecorator[SD]]
+    extends OneOffCookieSessionServiceTestKit[SD]
+    with BasicAccountRoutesTestKit[SD] { _: Suite with SessionMaterials[SD] => }
 
-trait OneOfHeaderSessionBasicAccountRoutesTestKit
-    extends OneOffHeaderSessionServiceTestKit
-    with BasicAccountRoutesTestKit { _: Suite with SessionMaterials => }
+trait OneOfHeaderSessionBasicAccountRoutesTestKit[SD <: SessionData with SessionDataDecorator[SD]]
+    extends OneOffHeaderSessionServiceTestKit[SD]
+    with BasicAccountRoutesTestKit[SD] { _: Suite with SessionMaterials[SD] => }
 
-trait RefreshableCookieSessionBasicAccountRoutesTestKit
-    extends RefreshableCookieSessionServiceTestKit
-    with BasicAccountRoutesTestKit { _: Suite with SessionMaterials => }
+trait RefreshableCookieSessionBasicAccountRoutesTestKit[SD <: SessionData with SessionDataDecorator[
+  SD
+]] extends RefreshableCookieSessionServiceTestKit[SD]
+    with BasicAccountRoutesTestKit[SD] { _: Suite with SessionMaterials[SD] => }
 
-trait RefreshableHeaderSessionBasicAccountRoutesTestKit
-    extends RefreshableHeaderSessionServiceTestKit
-    with BasicAccountRoutesTestKit { _: Suite with SessionMaterials => }
+trait RefreshableHeaderSessionBasicAccountRoutesTestKit[SD <: SessionData with SessionDataDecorator[
+  SD
+]] extends RefreshableHeaderSessionServiceTestKit[SD]
+    with BasicAccountRoutesTestKit[SD] { _: Suite with SessionMaterials[SD] => }

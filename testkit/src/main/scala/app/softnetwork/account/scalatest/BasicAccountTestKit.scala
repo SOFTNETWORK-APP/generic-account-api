@@ -7,12 +7,10 @@ import app.softnetwork.account.model.{BasicAccount, BasicAccountProfile}
 import app.softnetwork.account.persistence.query.AccountEventProcessorStreams.InternalAccountEvents2AccountProcessorStream
 import app.softnetwork.account.persistence.typed.{AccountBehavior, MockBasicAccountBehavior}
 import app.softnetwork.persistence.query.{InMemoryJournalProvider, InMemoryOffsetProvider}
-import app.softnetwork.session.service.SessionMaterials
 import org.scalatest.Suite
 import org.slf4j.{Logger, LoggerFactory}
 
-trait BasicAccountTestKit extends AccountTestKit[BasicAccount, BasicAccountProfile] {
-  _: Suite with SessionMaterials =>
+trait BasicAccountTestKit extends AccountTestKit[BasicAccount, BasicAccountProfile] { _: Suite =>
   override implicit def lppToSignUp: ((String, String, Option[BasicAccountProfile])) => SignUp = {
     case (login, password, profile) => BasicAccountSignUp(login, password, profile = profile)
   }

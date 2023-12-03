@@ -7,12 +7,13 @@ import app.softnetwork.account.model.{
   DefaultAccountView,
   DefaultProfileView
 }
+import app.softnetwork.session.model.{SessionData, SessionDataDecorator}
 import app.softnetwork.session.service.SessionMaterials
 import sttp.tapir.Schema
 
-trait BasicAccountServiceEndpoints
-    extends AccountServiceEndpoints[BasicAccountSignUp]
-    with BasicAccountTypeKey { _: SessionMaterials =>
+trait BasicAccountServiceEndpoints[SD <: SessionData with SessionDataDecorator[SD]]
+    extends AccountServiceEndpoints[BasicAccountSignUp, SD]
+    with BasicAccountTypeKey { _: SessionMaterials[SD] =>
 
   override implicit def toSignUp: BasicAccountSignUp => SignUp = identity
 

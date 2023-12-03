@@ -14,11 +14,10 @@ import app.softnetwork.account.serialization.accountFormats
 import app.softnetwork.api.server.ApiErrors
 import app.softnetwork.persistence.{generateUUID, ManifestWrapper}
 import app.softnetwork.persistence.typed.CommandTypeKey
+import app.softnetwork.session.model.{SessionData, SessionDataCompanion, SessionDataDecorator}
 import app.softnetwork.session.service.{ServiceWithSessionEndpoints, SessionMaterials}
 import com.softwaremill.session.SessionConfig
 import org.json4s.Formats
-import org.softnetwork.session.model.Session
-import org.softnetwork.session.model.Session.profileKey
 import sttp.capabilities
 import sttp.capabilities.akka.AkkaStreams
 import sttp.model.headers.{CookieValueWithMeta, WWWAuthenticateChallenge}
@@ -33,17 +32,19 @@ import scala.concurrent.Future
 import scala.language.implicitConversions
 import scala.util.{Failure, Success}
 
-trait AccountServiceEndpoints[SU]
+trait AccountServiceEndpoints[SU, SD <: SessionData with SessionDataDecorator[SD]]
     extends BaseAccountService
-    with ServiceWithSessionEndpoints[AccountCommand, AccountCommandResult]
+    with ServiceWithSessionEndpoints[AccountCommand, AccountCommandResult, SD]
     with ManifestWrapper[SU] {
-  _: CommandTypeKey[AccountCommand] with SessionMaterials =>
+  _: CommandTypeKey[AccountCommand] with SessionMaterials[SD] =>
 
   import app.softnetwork.serialization.serialization
 
   override implicit def formats: Formats = accountFormats
 
   implicit def sessionConfig: SessionConfig
+
+  implicit def companion: SessionDataCompanion[SD]
 
   override implicit def ts: ActorSystem[_] = system
 
@@ -105,8 +106,8 @@ trait AccountServiceEndpoints[SU]
                       case result: AccountCreated =>
                         val account = result.account
                         // create a new session
-                        var session = Session(account.uuid)
-                        session += (Session.anonymousKey, true)
+                        val session =
+                          companion.newSession.withId(account.uuid).withAnonymous(true)
                         Right(
                           (
                             (
@@ -171,8 +172,8 @@ trait AccountServiceEndpoints[SU]
                         val account = result.account
                         if (!AccountSettings.ActivationEnabled) {
                           // create a new session
-                          var session = Session(account.uuid)
-                          session += (Session.anonymousKey, false)
+                          val session =
+                            companion.newSession.withId(account.uuid).withAnonymous(false)
                           Right(
                             (
                               r._1.map(_ => None) /*akka-http-session bug ?*/,
@@ -237,12 +238,14 @@ trait AccountServiceEndpoints[SU]
               case r: LoginSucceededResult =>
                 val account = r.account
                 // create a new session
-                var session = Session(account.uuid)
-                session += (Session.adminKey, account.isAdmin)
-                session += (Session.anonymousKey, false)
+                var session =
+                  companion.newSession
+                    .withId(account.uuid)
+                    .withAnonymous(false)
+                    .withAdmin(account.isAdmin)
                 account.currentProfile match {
                   case Some(profile) =>
-                    session += (profileKey, profile.name)
+                    session += (session.profileKey, profile.name)
                   case _ =>
                 }
                 Right((account.view.asInstanceOf[AV], Some(session)))
@@ -257,7 +260,7 @@ trait AccountServiceEndpoints[SU]
 
   val loginEndpoint: PartialServerEndpointWithSecurityOutput[
     ((Login, Seq[Option[String]]), Seq[Option[String]]),
-    Option[Session],
+    Option[SD],
     Unit,
     ApiErrors.ErrorInfo,
     (((Seq[Option[String]], AV), Seq[Option[String]]), Option[CookieValueWithMeta]),
@@ -300,15 +303,14 @@ trait AccountServiceEndpoints[SU]
                       case result: LoginSucceededResult =>
                         val account = result.account
                         // create a new session
-                        var session = Session(
-                          account.uuid
-                          /** FIXME login.refreshable * */
-                        )
-                        session += (Session.adminKey, account.isAdmin)
-                        session += (Session.anonymousKey, false)
+                        var session =
+                          companion.newSession
+                            .withId(account.uuid)
+                            .withAnonymous(false)
+                            .withAdmin(account.isAdmin)
                         account.currentProfile match {
                           case Some(profile) =>
-                            session += (profileKey, profile.name)
+                            session += (session.profileKey, profile.name)
                           case _ =>
                         }
                         Right(
@@ -350,7 +352,7 @@ trait AccountServiceEndpoints[SU]
               case r: AccountActivated =>
                 val account = r.account
                 // create a new session
-                Right((), Some(Session(account.uuid)))
+                Right((), Some(companion.newSession.withId(account.uuid)))
               case other => Left(resultToApiError(other))
             }
           )
@@ -450,8 +452,7 @@ trait AccountServiceEndpoints[SU]
             run(reset.token, reset).map {
               case r: PasswordReseted =>
                 // create a new session
-                var session = Session(r.uuid)
-                session += (Session.anonymousKey, false)
+                val session = companion.newSession.withId(r.uuid).withAnonymous(false)
                 Right((), Some(session))
               case other => Left(resultToApiError(other))
             }

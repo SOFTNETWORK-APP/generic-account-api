@@ -7,11 +7,15 @@ import app.softnetwork.persistence.launch.PersistentEntity
 import app.softnetwork.persistence.query.EventProcessorStream
 import app.softnetwork.persistence.schema.SchemaType
 import app.softnetwork.session.CsrfCheckHeader
+import app.softnetwork.session.handlers.SessionRefreshTokenDao
+import app.softnetwork.session.model.SessionDataCompanion
+import com.softwaremill.session.RefreshTokenStorage
 import org.slf4j.{Logger, LoggerFactory}
+import org.softnetwork.session.model.Session
 
 object BasicAccountRoutesWithNotificationsPostgresLauncher
     extends AllNotificationsApi
-    with BasicAccountRoutesApi
+    with BasicAccountRoutesApi[Session]
     with JdbcSchemaProvider
     with CsrfCheckHeader {
 
@@ -28,4 +32,9 @@ object BasicAccountRoutesWithNotificationsPostgresLauncher
     */
   override def eventProcessorStreams: ActorSystem[_] => Seq[EventProcessorStream[_]] = sys =>
     super.eventProcessorStreams(sys) ++ notificationEventProcessorStreams(sys)
+
+  override implicit def companion: SessionDataCompanion[Session] = Session
+
+  override protected def refreshTokenStorage: ActorSystem[_] => RefreshTokenStorage[Session] =
+    sys => SessionRefreshTokenDao(sys)
 }

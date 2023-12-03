@@ -14,22 +14,21 @@ import com.typesafe.scalalogging.StrictLogging
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import org.json4s.{jackson, Formats}
 import org.json4s.jackson.Serialization
-import org.softnetwork.session.model.Session
-import Session._
 import akka.actor.typed.ActorSystem
 import app.softnetwork.account.handlers.BasicAccountTypeKey
 import app.softnetwork.account.spi.OAuth2Service
 import app.softnetwork.persistence.generateUUID
+import app.softnetwork.session.model.{SessionData, SessionDataDecorator}
 import com.softwaremill.session.SessionConfig
 
 import scala.util.{Failure, Success}
 
-trait OAuthService
-    extends AccountServiceDirectives
+trait OAuthService[SD <: SessionData with SessionDataDecorator[SD]]
+    extends AccountServiceDirectives[SD]
     with DefaultComplete
     with Json4sSupport
     with StrictLogging
-    with ApiRoute { _: CommandTypeKey[AccountCommand] with SessionMaterials =>
+    with ApiRoute { _: CommandTypeKey[AccountCommand] with SessionMaterials[SD] =>
 
   implicit def sessionConfig: SessionConfig
 
@@ -155,14 +154,15 @@ trait OAuthService
       ) {
         authenticateOAuth2Async(AccountSettings.Realm, oauth) { case (account, application) =>
           // create a new session
-          var session = Session(account.uuid)
-          session += (Session.adminKey, account.isAdmin)
-          session += (Session.anonymousKey, false)
+          var session = companion.newSession
+            .withId(account.uuid)
+            .withAdmin(account.isAdmin)
+            .withAnonymous(false)
           session += ("client_id", application.clientId)
           session += ("scope", application.accessToken.flatMap(_.scope).getOrElse(""))
           account.currentProfile match {
             case Some(profile) =>
-              session += (profileKey, profile.name)
+              session += (session.profileKey, profile.name)
             case _ =>
           }
           setSession(sc, st, session) {
@@ -207,8 +207,7 @@ trait OAuthService
                   lookup(login) completeWith {
                     case Some(uuid) =>
                       // create a new session
-                      var session = Session(uuid)
-                      session += (Session.anonymousKey, false)
+                      var session = companion.newSession.withId(uuid).withAnonymous(false)
                       session += ("provider", data.provider)
                       setSession(sc, st, session) {
                         // create a new anti csrf token
@@ -224,8 +223,8 @@ trait OAuthService
                       run(generateUUID(), SignUpOAuth(data)) completeWith {
                         case r: AccountCreated =>
                           // create a new session
-                          var session = Session(r.account.uuid)
-                          session += (Session.anonymousKey, false)
+                          var session =
+                            companion.newSession.withId(r.account.uuid).withAnonymous(false)
                           session += ("provider", data.provider)
                           session ++= data.data.toSeq
                           setSession(sc, st, session) {
@@ -299,4 +298,6 @@ trait OAuthService
 
 }
 
-trait BasicOAuthService extends OAuthService with BasicAccountTypeKey { _: SessionMaterials => }
+trait BasicOAuthService[SD <: SessionData with SessionDataDecorator[SD]]
+    extends OAuthService[SD]
+    with BasicAccountTypeKey { _: SessionMaterials[SD] => }

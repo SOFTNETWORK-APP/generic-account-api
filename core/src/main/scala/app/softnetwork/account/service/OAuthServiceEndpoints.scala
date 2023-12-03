@@ -9,11 +9,10 @@ import app.softnetwork.account.spi.OAuth2Service
 import app.softnetwork.api.server.ApiErrors
 import app.softnetwork.persistence.generateUUID
 import app.softnetwork.persistence.typed.CommandTypeKey
+import app.softnetwork.session.model.{SessionData, SessionDataCompanion, SessionDataDecorator}
 import app.softnetwork.session.service.{ServiceWithSessionEndpoints, SessionMaterials}
 import com.softwaremill.session.SessionConfig
 import org.json4s.Formats
-import org.softnetwork.session.model.Session
-import org.softnetwork.session.model.Session.profileKey
 import sttp.capabilities
 import sttp.capabilities.akka.AkkaStreams
 import sttp.model.headers.AuthenticationScheme.{Basic, Bearer}
@@ -27,12 +26,14 @@ import scala.concurrent.Future
 import scala.language.implicitConversions
 import scala.util.{Failure, Success}
 
-trait OAuthServiceEndpoints
+trait OAuthServiceEndpoints[SD <: SessionData with SessionDataDecorator[SD]]
     extends BaseAccountService
-    with ServiceWithSessionEndpoints[AccountCommand, AccountCommandResult] {
-  _: CommandTypeKey[AccountCommand] with SessionMaterials =>
+    with ServiceWithSessionEndpoints[AccountCommand, AccountCommandResult, SD] {
+  _: CommandTypeKey[AccountCommand] with SessionMaterials[SD] =>
 
   implicit def sessionConfig: SessionConfig
+
+  implicit def companion: SessionDataCompanion[SD]
 
   override implicit def ts: ActorSystem[_] = system
 
@@ -207,14 +208,15 @@ trait OAuthServiceEndpoints
               case r: OAuthSucceededResult =>
                 val account = r.account
                 // create a new session
-                var session = Session(account.uuid)
-                session += (Session.adminKey, account.isAdmin)
-                session += (Session.anonymousKey, false)
+                var session = companion.newSession
+                  .withId(account.uuid)
+                  .withAdmin(account.isAdmin)
+                  .withAnonymous(false)
                 session += ("client_id", r.application.clientId)
                 session += ("scope", r.application.accessToken.flatMap(_.scope).getOrElse(""))
                 account.currentProfile match {
                   case Some(profile) =>
-                    session += (profileKey, profile.name)
+                    session += (session.profileKey, profile.name)
                   case _ =>
                 }
                 Right(
@@ -271,8 +273,7 @@ trait OAuthServiceEndpoints
                   case Some(login) =>
                     lookup(login) flatMap {
                       case Some(uuid) =>
-                        var session = Session(uuid)
-                        session += (Session.anonymousKey, false)
+                        var session = companion.newSession.withId(uuid).withAnonymous(false)
                         session += ("provider", data.provider)
                         session ++= data.data.toSeq
                         Future.successful(
@@ -282,8 +283,8 @@ trait OAuthServiceEndpoints
                         run(generateUUID(), SignUpOAuth(data)) map {
                           case r: AccountCreated =>
                             // create a new session
-                            var session = Session(r.account.uuid)
-                            session += (Session.anonymousKey, false)
+                            var session =
+                              companion.newSession.withId(r.account.uuid).withAnonymous(false)
                             session += ("provider", data.provider)
                             Right((), Some(session))
                           case other => Left(resultToApiError(other))

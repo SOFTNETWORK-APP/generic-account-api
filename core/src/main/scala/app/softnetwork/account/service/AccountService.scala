@@ -13,26 +13,28 @@ import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.message._
 import app.softnetwork.account.model._
 import app.softnetwork.account.serialization._
-import org.softnetwork.session.model.Session
 import app.softnetwork.session.service.SessionMaterials
 import org.json4s.jackson.Serialization
 import org.json4s.{jackson, Formats}
 
 import scala.language.implicitConversions
-import Session._
 import akka.actor.typed.ActorSystem
 import app.softnetwork.persistence._
+import app.softnetwork.session.model.{SessionData, SessionDataDecorator}
 import com.softwaremill.session.SessionConfig
 
 /** Created by smanciot on 23/04/2020.
   */
-trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountView[PV, DV]]
-    extends AccountServiceDirectives
+trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountView[
+  PV,
+  DV
+], SD <: SessionData with SessionDataDecorator[SD]]
+    extends AccountServiceDirectives[SD]
     with DefaultComplete
     with Json4sSupport
     with StrictLogging
     with ApiRoute {
-  _: CommandTypeKey[AccountCommand] with ManifestWrapper[AV] with SessionMaterials =>
+  _: CommandTypeKey[AccountCommand] with ManifestWrapper[AV] with SessionMaterials[SD] =>
 
   type SU
 
@@ -80,8 +82,7 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
             case r: AccountCreated =>
               val account = r.account
               // create a new session
-              var session = Session(account.uuid)
-              session += (Session.anonymousKey, true)
+              val session = companion.newSession.withId(account.uuid).withAnonymous(true)
               setSession(sc, st, session) {
                 // create a new anti csrf token
                 setNewCsrfToken(checkHeader) {
@@ -124,8 +125,8 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
                 )
               if (!AccountSettings.ActivationEnabled) {
                 // create a new session
-                var session = Session(account.uuid)
-                session += (Session.anonymousKey, false)
+                val session =
+                  companion.newSession.withId(account.uuid).withAnonymous(false)
                 setSession(sc, st, session) {
                   // create a new anti csrf token
                   setNewCsrfToken(checkHeader) {
@@ -153,7 +154,7 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
           case r: AccountActivated =>
             val account = r.account
             // create a new session
-            setSession(sc, st, Session(account.uuid)) {
+            setSession(sc, st, companion.newSession.withId(account.uuid)) {
               // create a new anti csrf token
               setNewCsrfToken(checkHeader) {
                 complete(HttpResponse(StatusCodes.OK, entity = account.view.asInstanceOf[AV]))
@@ -178,12 +179,14 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
       ) {
         authenticateBasicAsync(AccountSettings.Realm, basicAuth) { account =>
           // create a new session
-          var session = Session(account.uuid)
-          session += (Session.adminKey, account.isAdmin)
-          session += (Session.anonymousKey, false)
+          var session =
+            companion.newSession
+              .withId(account.uuid)
+              .withAnonymous(false)
+              .withAdmin(account.isAdmin)
           account.currentProfile match {
             case Some(profile) =>
-              session += (profileKey, profile.name)
+              session += (session.profileKey, profile.name)
             case _ =>
           }
           setSession(sc, st, session) {
@@ -218,15 +221,14 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
             case r: LoginSucceededResult =>
               val account = r.account
               // create a new session
-              var session = Session(
-                account.uuid
-                /** FIXME login.refreshable * */
-              )
-              session += (Session.adminKey, account.isAdmin)
-              session += (Session.anonymousKey, false)
+              var session =
+                companion.newSession
+                  .withId(account.uuid)
+                  .withAnonymous(false)
+                  .withAdmin(account.isAdmin)
               account.currentProfile match {
                 case Some(profile) =>
-                  session += (profileKey, profile.name)
+                  session += (session.profileKey, profile.name)
                 case _ =>
               }
               setSession(sc, st, session) {
@@ -350,8 +352,7 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
           run(reset.token, reset) completeWith {
             case r: PasswordReseted =>
               // create a new session
-              var session = Session(r.uuid)
-              session += (Session.anonymousKey, false)
+              val session = companion.newSession.withId(r.uuid).withAnonymous(false)
               setSession(sc, st, session) {
                 complete(HttpResponse(status = StatusCodes.OK))
               }

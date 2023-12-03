@@ -20,6 +20,7 @@ import app.softnetwork.api.server.ApiRoutes
 import app.softnetwork.api.server.config.ServerSettings._
 import app.softnetwork.persistence.ManifestWrapper
 import app.softnetwork.serialization._
+import app.softnetwork.session.model.{SessionData, SessionDataDecorator}
 import app.softnetwork.session.service.SessionMaterials
 import org.scalatest.wordspec.AnyWordSpecLike
 
@@ -30,9 +31,11 @@ trait AccountRouteSpec[
   P <: Profile with ProfileDecorator,
   PV <: ProfileView,
   DV <: AccountDetailsView,
-  AV <: AccountView[PV, DV]
+  AV <: AccountView[PV, DV],
+  SD <: SessionData with SessionDataDecorator[SD]
 ] extends AnyWordSpecLike
-    with AccountRouteTestKit[T, P] { _: ApiRoutes with ManifestWrapper[AV] with SessionMaterials =>
+    with AccountRouteTestKit[T, P, SD] {
+  _: ApiRoutes with ManifestWrapper[AV] with SessionMaterials[SD] =>
 
   protected val anonymous = "anonymous"
 

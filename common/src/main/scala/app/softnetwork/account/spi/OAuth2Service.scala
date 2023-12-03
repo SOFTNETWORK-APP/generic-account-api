@@ -79,7 +79,7 @@ trait OAuth2ServiceCompanion {
     case "facebook"  => new FacebookApiService()
     case "github"    => new GitHubApiService()
     case "instagram" => new InstagramApiService()
-    case _ => throw new Exception(s"OAuth2Service for $networkName not defined")
+    case _           => throw new Exception(s"OAuth2Service for $networkName not defined")
   }
 
   def apply(): Seq[OAuth2Service] = AccountSettings.OAuthSettings.providers.keys

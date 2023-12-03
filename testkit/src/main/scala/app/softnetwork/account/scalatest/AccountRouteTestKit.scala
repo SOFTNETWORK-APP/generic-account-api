@@ -8,6 +8,7 @@ import app.softnetwork.account.model.{Account, AccountDecorator, Profile, Profil
 import app.softnetwork.api.server.ApiRoutes
 import app.softnetwork.api.server.config.ServerSettings.RootPath
 import app.softnetwork.serialization._
+import app.softnetwork.session.model.{SessionData, SessionDataDecorator}
 import app.softnetwork.session.scalatest.SessionTestKit
 import app.softnetwork.session.service.SessionMaterials
 import org.scalatest.Suite
@@ -16,9 +17,10 @@ import scala.language.implicitConversions
 
 trait AccountRouteTestKit[
   T <: Account with AccountDecorator,
-  P <: Profile with ProfileDecorator
-] extends SessionTestKit
-    with AccountTestKit[T, P] { _: Suite with ApiRoutes with SessionMaterials =>
+  P <: Profile with ProfileDecorator,
+  SD <: SessionData with SessionDataDecorator[SD]
+] extends SessionTestKit[SD]
+    with AccountTestKit[T, P] { _: Suite with ApiRoutes with SessionMaterials[SD] =>
 
   override implicit lazy val ts: ActorSystem[_] = typedSystem()
 

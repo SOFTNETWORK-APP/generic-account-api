@@ -6,7 +6,6 @@ import app.softnetwork.account.message._
 import app.softnetwork.account.model._
 import app.softnetwork.persistence._
 import app.softnetwork.persistence.typed.CommandTypeKey
-import app.softnetwork.session.service.BasicSessionMaterials
 import org.scalatest.wordspec.AnyWordSpecLike
 
 /** Created by smanciot on 18/04/2020.
@@ -14,8 +13,7 @@ import org.scalatest.wordspec.AnyWordSpecLike
 trait AccountHandlerSpec[T <: Account with AccountDecorator, P <: Profile with ProfileDecorator]
     extends AccountHandler
     with AnyWordSpecLike
-    with AccountTestKit[T, P]
-    with BasicSessionMaterials { _: CommandTypeKey[AccountCommand] with Generator =>
+    with AccountTestKit[T, P] { _: CommandTypeKey[AccountCommand] with Generator =>
 
   private val anonymous = "anonymous"
 

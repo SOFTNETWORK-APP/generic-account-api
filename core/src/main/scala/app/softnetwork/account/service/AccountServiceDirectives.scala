@@ -18,15 +18,18 @@ import app.softnetwork.account.message.{
 }
 import app.softnetwork.account.model.{Account, Application}
 import app.softnetwork.persistence.typed.CommandTypeKey
+import app.softnetwork.session.model.{SessionData, SessionDataCompanion, SessionDataDecorator}
 import app.softnetwork.session.service.{ServiceWithSessionDirectives, SessionMaterials}
 
 import scala.concurrent.Future
 
-trait AccountServiceDirectives
+trait AccountServiceDirectives[SD <: SessionData with SessionDataDecorator[SD]]
     extends BaseAccountService
-    with ServiceWithSessionDirectives[AccountCommand, AccountCommandResult]
+    with ServiceWithSessionDirectives[AccountCommand, AccountCommandResult, SD]
     with Directives {
-  _: CommandTypeKey[AccountCommand] with SessionMaterials =>
+  _: CommandTypeKey[AccountCommand] with SessionMaterials[SD] =>
+
+  implicit def companion: SessionDataCompanion[SD]
 
   protected def basicAuth: Credentials => Future[Option[Account]] = {
     case p @ Credentials.Provided(_) =>

@@ -9,6 +9,7 @@ import app.softnetwork.account.service.AccountService
 import app.softnetwork.notification.model.Platform
 import app.softnetwork.persistence._
 import app.softnetwork.persistence.typed.CommandTypeKey
+import app.softnetwork.session.model.{SessionData, SessionDataDecorator}
 import app.softnetwork.session.service.SessionMaterials
 import org.scalatest.wordspec.AnyWordSpecLike
 
@@ -19,11 +20,12 @@ trait AccountServiceSpec[
   P <: Profile with ProfileDecorator,
   PV <: ProfileView,
   DV <: AccountDetailsView,
-  AV <: AccountView[PV, DV]
-] extends AccountService[PV, DV, AV]
+  AV <: AccountView[PV, DV],
+  SD <: SessionData with SessionDataDecorator[SD]
+] extends AccountService[PV, DV, AV, SD]
     with AnyWordSpecLike
     with AccountTestKit[T, P] {
-  _: CommandTypeKey[AccountCommand] with ManifestWrapper[AV] with SessionMaterials =>
+  _: CommandTypeKey[AccountCommand] with ManifestWrapper[AV] with SessionMaterials[SD] =>
 
   implicit lazy val system: ActorSystem[_] = typedSystem()
 
