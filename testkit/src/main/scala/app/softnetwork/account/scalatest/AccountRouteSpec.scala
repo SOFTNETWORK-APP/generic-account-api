@@ -353,7 +353,9 @@ trait AccountRouteSpec[
       Post(
         s"/$RootPath/${AccountSettings.Path}/login",
         Login(gsm, password)
-      ) ~> routes // reset number of failures
+      ) ~> routes ~> check(
+        status shouldEqual StatusCodes.OK
+      ) // reset number of failures
       (0 until AccountSettings.MaxLoginFailures) // max number of failures
         .map(_ =>
           Post(s"/$RootPath/${AccountSettings.Path}/login", Login(gsm, "fake")) ~> routes ~> check {
