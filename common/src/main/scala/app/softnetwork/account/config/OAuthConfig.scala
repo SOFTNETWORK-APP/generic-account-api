@@ -9,11 +9,18 @@ case class OAuthProvider(
 
 case class AuthorizationCode(expirationTime: Int)
 
-case class AccessToken(expirationTime: Int)
+sealed trait Token {
+  def expirationTime: Int
+}
+
+case class AccessToken(expirationTime: Int) extends Token
+
+case class RefreshToken(expirationTime: Int) extends Token
 
 case class OAuthConfig(
   path: String,
   authorizationCode: AuthorizationCode,
   accessToken: AccessToken,
+  refreshToken: RefreshToken,
   providers: Map[String, OAuthProvider]
 )

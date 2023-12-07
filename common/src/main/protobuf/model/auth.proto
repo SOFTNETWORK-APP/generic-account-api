@@ -67,13 +67,14 @@ message AuthorizationCode {
 
 message AccessToken {
     option (scalapb.message).extends = "ProtobufDomainObject";
-    option (scalapb.message).extends = "VerificationExpirationDate";
+    option (scalapb.message).extends = "AccessTokenDecorator";
     option (scalapb.message).companion_extends = "AccessTokenCompanion";
     required string token = 1;
     required string tokenType = 2 [default = "Bearer"];
     optional string scope = 3;
     required google.protobuf.Timestamp expirationDate = 4 [(scalapb.field).type = "java.time.Instant"];
     required string refreshToken = 5;
+    optional google.protobuf.Timestamp refreshExpirationDate = 6 [(scalapb.field).type = "java.time.Instant"];
 }
 
 message Application {

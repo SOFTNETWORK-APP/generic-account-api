@@ -204,7 +204,8 @@ package object message {
     access_token: String,
     token_type: String,
     expires_in: Int,
-    refresh_token: String
+    refresh_token: String,
+    refresh_token_expires_in: Option[Int] = None
   )
 
   case class OAuthSucceededResult(account: Account, application: Application)

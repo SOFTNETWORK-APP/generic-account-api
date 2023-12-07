@@ -31,6 +31,8 @@ trait ExpirationToken extends ExpirationDate {
 trait VerificationExpirationDate {
   def expirationDate: Instant
   final def expired: Boolean = Specification(ExpirationDateRule).isSatisfiedBy(this)
+  final def expiresIn: Int =
+    Math.max(0, (expirationDate.getEpochSecond - Instant.now().getEpochSecond).toInt)
 }
 
 case object ExpirationDateRule extends Rule[VerificationExpirationDate] {
@@ -81,7 +83,19 @@ trait AccessTokenCompanion extends ExpirationToken {
       .withToken(generateToken(prefix))
       .withExpirationDate(compute(OAuthSettings.accessToken.expirationTime))
       .withRefreshToken(generateToken(prefix))
+      .withRefreshExpirationDate(compute(OAuthSettings.refreshToken.expirationTime))
       .copy(scope = scope)
   }
 
+}
+
+trait AccessTokenDecorator extends VerificationExpirationDate { _: AccessToken =>
+  private lazy val refreshVerification: Option[VerificationExpirationDate] =
+    refreshExpirationDate.map(exp =>
+      new VerificationExpirationDate {
+        override def expirationDate: Instant = exp
+      }
+    )
+  def refreshExpired: Boolean = refreshVerification.exists(_.expired)
+  def refreshExpiresIn: Option[Int] = refreshVerification.map(_.expiresIn)
 }

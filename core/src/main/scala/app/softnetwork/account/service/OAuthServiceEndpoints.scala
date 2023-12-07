@@ -164,8 +164,9 @@ trait OAuthServiceEndpoints[SD <: SessionData with SessionDataDecorator[SD]]
                 Tokens(
                   r.accessToken.token,
                   r.accessToken.tokenType.toLowerCase(),
-                  AccountSettings.OAuthSettings.accessToken.expirationTime * 60,
-                  r.accessToken.refreshToken
+                  r.accessToken.expiresIn,
+                  r.accessToken.refreshToken,
+                  r.accessToken.refreshExpiresIn
                 )
               )
             case error: AccountErrorMessage =>
@@ -180,8 +181,9 @@ trait OAuthServiceEndpoints[SD <: SessionData with SessionDataDecorator[SD]]
                 Tokens(
                   r.accessToken.token,
                   r.accessToken.tokenType.toLowerCase(),
-                  AccountSettings.OAuthSettings.accessToken.expirationTime * 60,
-                  r.accessToken.refreshToken
+                  r.accessToken.expiresIn,
+                  r.accessToken.refreshToken,
+                  r.accessToken.refreshExpiresIn
                 )
               )
             case error: AccountErrorMessage =>
