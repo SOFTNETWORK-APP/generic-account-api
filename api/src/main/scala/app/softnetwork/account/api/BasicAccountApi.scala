@@ -12,13 +12,8 @@ import app.softnetwork.api.server.{ApiRoutes, SwaggerEndpoint}
 import app.softnetwork.persistence.jdbc.query.{JdbcJournalProvider, JdbcOffsetProvider}
 import app.softnetwork.persistence.schema.SchemaProvider
 import app.softnetwork.session.CsrfCheck
-import app.softnetwork.session.config.Settings
-import app.softnetwork.session.model.{
-  SessionData,
-  SessionDataCompanion,
-  SessionDataDecorator,
-  SessionManagers
-}
+import app.softnetwork.session.api.SessionDataApi
+import app.softnetwork.session.model.{SessionData, SessionDataCompanion, SessionDataDecorator}
 import app.softnetwork.session.service.SessionMaterials
 import com.softwaremill.session.{RefreshTokenStorage, SessionConfig, SessionManager}
 import com.typesafe.config.Config
@@ -29,7 +24,8 @@ import sttp.tapir.swagger.SwaggerUIOptions
 import scala.concurrent.ExecutionContext
 
 trait BasicAccountApi[SD <: SessionData with SessionDataDecorator[SD]]
-    extends AccountApplication[BasicAccount, BasicAccountProfile] {
+    extends AccountApplication[BasicAccount, BasicAccountProfile]
+    with SessionDataApi[SD] {
   self: SchemaProvider with ApiRoutes with CsrfCheck =>
 
   override def accountDao: AccountDao = BasicAccountDao
@@ -48,17 +44,6 @@ trait BasicAccountApi[SD <: SessionData with SessionDataDecorator[SD]]
       override def tag: String = s"${BasicAccountBehavior.persistenceId}-to-internal"
       override implicit def system: ActorSystem[_] = sys
     }
-
-  implicit def sessionConfig: SessionConfig = Settings.Session.DefaultSessionConfig
-
-  implicit def companion: SessionDataCompanion[SD]
-
-  override protected def sessionType: Session.SessionType =
-    Settings.Session.SessionContinuityAndTransport
-
-  protected def manager: SessionManager[SD] = SessionManagers.basic
-
-  protected def refreshTokenStorage: ActorSystem[_] => RefreshTokenStorage[SD]
 
   def accountSwagger: ActorSystem[_] => SwaggerEndpoint = sys =>
     new BasicAccountServiceEndpoints[SD] with SwaggerEndpoint with SessionMaterials[SD] {

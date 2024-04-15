@@ -479,7 +479,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
           case Some(account) if account.status.isActive =>
             import cmd._
             account.applications.find(
-              _.accessToken.exists(ac => ac.refreshToken == sha256(refreshToken) && !ac.expired)
+              _.accessToken.exists(at => at.refreshToken == sha256(refreshToken) && !at.refreshExpired)
             ) match {
               case Some(application) =>
                 val accessToken =
