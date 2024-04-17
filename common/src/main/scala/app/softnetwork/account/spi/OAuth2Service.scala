@@ -49,7 +49,9 @@ trait OAuth2Service extends StrictLogging {
 
   def getAccessToken(code: String, extraParameters: Map[String, String]): OAuth2AccessToken = {
     import scala.collection.JavaConverters._
-    service.getAccessToken(AccessTokenRequestParams.create(code).addExtraParameters(extraParameters.asJava))
+    service.getAccessToken(
+      AccessTokenRequestParams.create(code).setExtraParameters(extraParameters.asJava)
+    )
   }
 
   def refreshAccessToken(refreshToken: String): OAuth2AccessToken =
