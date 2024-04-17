@@ -259,7 +259,7 @@ trait AccountRouteSpec[
     }
     "authenticate using OAuth2" in {
       Get(
-        s"/$RootPath/${AccountSettings.OAuthPath}/dummy/backup?code=1234"
+        s"/$RootPath/${AccountSettings.OAuthPath}/dummy/callback?code=1234"
       ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
       }

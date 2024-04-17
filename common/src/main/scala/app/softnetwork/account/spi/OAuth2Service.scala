@@ -8,7 +8,7 @@ import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.github.scribejava.core.builder.ServiceBuilder
 import com.github.scribejava.core.builder.api.DefaultApi20
 import com.github.scribejava.core.model.{OAuth2AccessToken, OAuthRequest, Response}
-import com.github.scribejava.core.oauth.OAuth20Service
+import com.github.scribejava.core.oauth.{AccessTokenRequestParams, OAuth20Service}
 import com.typesafe.scalalogging.StrictLogging
 
 import scala.util.Try
@@ -47,7 +47,10 @@ trait OAuth2Service extends StrictLogging {
   def signRequest(accessToken: OAuth2AccessToken, request: OAuthRequest): Unit =
     service.signRequest(accessToken, request)
 
-  def getAccessToken(code: String): OAuth2AccessToken = service.getAccessToken(code)
+  def getAccessToken(code: String, extraParameters: Map[String, String]): OAuth2AccessToken = {
+    import scala.collection.JavaConverters._
+    service.getAccessToken(AccessTokenRequestParams.create(code).addExtraParameters(extraParameters.asJava))
+  }
 
   def refreshAccessToken(refreshToken: String): OAuth2AccessToken =
     service.refreshAccessToken(refreshToken)
@@ -59,8 +62,8 @@ trait OAuth2Service extends StrictLogging {
     .setSerializationInclusion(Include.NON_EMPTY)
   jsonMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 
-  def userInfo(code: String): Try[Map[String, String]] = Try {
-    val accessToken = getAccessToken(code)
+  def userInfo(code: String, extraParameters: Map[String, String]): Try[Map[String, String]] = Try {
+    val accessToken = getAccessToken(code, extraParameters)
     import com.github.scribejava.core.model.{OAuthRequest, Verb}
     val request =
       new OAuthRequest(Verb.GET, protectedResourceUrl)

@@ -40,7 +40,7 @@ trait OAuthService[SD <: SessionData with SessionDataDecorator[SD]]
 
   override val route: Route = {
     pathPrefix(AccountSettings.OAuthPath) {
-      concat(authorize ~ token ~ me :: (signin ++ backup).toList: _*)
+      concat(authorize ~ token ~ me :: (signin ++ callback).toList: _*)
     }
   }
 
@@ -197,38 +197,22 @@ trait OAuthService[SD <: SessionData with SessionDataDecorator[SD]]
       }
     }
 
-  lazy val backup: Seq[Route] =
-    for (service <- services) yield path(service.networkName / "backup") {
+  lazy val callback: Seq[Route] =
+    for (service <- services) yield path(service.networkName / "callback") {
       get {
-        parameter("code") { code =>
-          service.userInfo(code) match {
-            case Success(s) =>
-              val data = service.extractData(s)
-              data.login match {
-                case Some(login) =>
-                  lookup(login) completeWith {
-                    case Some(uuid) =>
-                      // create a new session
-                      var session = companion.newSession.withId(uuid).withAnonymous(false)
-                      session += ("provider", data.provider)
-                      setSession(sc, st, session) {
-                        // create a new anti csrf token
-                        setNewCsrfToken(checkHeader) {
-                          complete(
-                            HttpResponse(
-                              StatusCodes.OK
-                            )
-                          )
-                        }
-                      }
-                    case _ =>
-                      run(generateUUID(), SignUpOAuth(data)) completeWith {
-                        case r: AccountCreated =>
+        parameterMap { params =>
+          params.get("code") match {
+            case Some(code) =>
+              service.userInfo(code, params.filterNot(_._1 == "code")) match {
+                case Success(s) =>
+                  val data = service.extractData(s)
+                  data.login match {
+                    case Some(login) =>
+                      lookup(login) completeWith {
+                        case Some(uuid) =>
                           // create a new session
-                          var session =
-                            companion.newSession.withId(r.account.uuid).withAnonymous(false)
+                          var session = companion.newSession.withId(uuid).withAnonymous(false)
                           session += ("provider", data.provider)
-                          session ++= data.data.toSeq
                           setSession(sc, st, session) {
                             // create a new anti csrf token
                             setNewCsrfToken(checkHeader) {
@@ -239,20 +223,41 @@ trait OAuthService[SD <: SessionData with SessionDataDecorator[SD]]
                               )
                             }
                           }
-                        case error: AccountErrorMessage =>
-                          complete(
-                            HttpResponse(StatusCodes.BadRequest, entity = error)
-                          )
-                        case _ => complete(StatusCodes.BadRequest)
+                        case _ =>
+                          run(generateUUID(), SignUpOAuth(data)) completeWith {
+                            case r: AccountCreated =>
+                              // create a new session
+                              var session =
+                                companion.newSession.withId(r.account.uuid).withAnonymous(false)
+                              session += ("provider", data.provider)
+                              session ++= data.data.toSeq
+                              setSession(sc, st, session) {
+                                // create a new anti csrf token
+                                setNewCsrfToken(checkHeader) {
+                                  complete(
+                                    HttpResponse(
+                                      StatusCodes.OK
+                                    )
+                                  )
+                                }
+                              }
+                            case error: AccountErrorMessage =>
+                              complete(
+                                HttpResponse(StatusCodes.BadRequest, entity = error)
+                              )
+                            case _ => complete(StatusCodes.BadRequest)
+                          }
                       }
+                    case _ =>
+                      log.error(s"login not found within $data for ${service.networkName}")
+                      complete(HttpResponse(StatusCodes.InternalServerError))
                   }
-                case _ =>
-                  log.error(s"login not found within $data for ${service.networkName}")
+                case Failure(f) =>
+                  logger.error(f.getMessage, f)
                   complete(HttpResponse(StatusCodes.InternalServerError))
               }
-            case Failure(f) =>
-              logger.error(f.getMessage, f)
-              complete(HttpResponse(StatusCodes.InternalServerError))
+            case _ =>
+              complete(HttpResponse(StatusCodes.BadRequest))
           }
         }
       }

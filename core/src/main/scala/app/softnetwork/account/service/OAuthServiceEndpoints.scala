@@ -259,46 +259,51 @@ trait OAuthServiceEndpoints[SD <: SessionData with SessionDataDecorator[SD]]
           )
       )
 
-  def backup(service: OAuth2Service): ServerEndpoint[Any with AkkaStreams, Future] =
+  def callback(service: OAuth2Service): ServerEndpoint[Any with AkkaStreams, Future] =
     setNewCsrfToken(checkMode) {
       setSession(sc, st) {
         endpoint.get
-          .in(AccountSettings.OAuthPath / service.networkName / "backup")
-          .description(s"OAuth2 ${service.networkName} backup endpoint")
-          .securityIn(query[String]("code").description("authorization code"))
+          .in(AccountSettings.OAuthPath / service.networkName / "callback")
+          .description(s"OAuth2 ${service.networkName} callback endpoint")
+          .securityIn(queryParams.description("authorization query parameters"))
           .errorOut(ApiErrors.oneOfApiErrors)
-          .serverSecurityLogicWithOutput(code =>
-            service.userInfo(code) match {
-              case Success(s) =>
-                val data = service.extractData(s)
-                data.login match {
-                  case Some(login) =>
-                    lookup(login) flatMap {
-                      case Some(uuid) =>
-                        var session = companion.newSession.withId(uuid).withAnonymous(false)
-                        session += ("provider", data.provider)
-                        session ++= data.data.toSeq
-                        Future.successful(
-                          Right((), Some(session))
-                        )
-                      case _ =>
-                        run(generateUUID(), SignUpOAuth(data)) map {
-                          case r: AccountCreated =>
-                            // create a new session
-                            var session =
-                              companion.newSession.withId(r.account.uuid).withAnonymous(false)
+          .serverSecurityLogicWithOutput(params =>
+            params.get("code") match {
+              case Some(code) =>
+                service.userInfo(code, params.toMap.filterNot(_._1 == "code")) match {
+                  case Success(s) =>
+                    val data = service.extractData(s)
+                    data.login match {
+                      case Some(login) =>
+                        lookup(login) flatMap {
+                          case Some(uuid) =>
+                            var session = companion.newSession.withId(uuid).withAnonymous(false)
                             session += ("provider", data.provider)
-                            Right((), Some(session))
-                          case other => Left(resultToApiError(other))
+                            session ++= data.data.toSeq
+                            Future.successful(
+                              Right((), Some(session))
+                            )
+                          case _ =>
+                            run(generateUUID(), SignUpOAuth(data)) map {
+                              case r: AccountCreated =>
+                                // create a new session
+                                var session =
+                                  companion.newSession.withId(r.account.uuid).withAnonymous(false)
+                                session += ("provider", data.provider)
+                                Right((), Some(session))
+                              case other => Left(resultToApiError(other))
+                            }
                         }
+                      case _ =>
+                        log.error(s"login not found within $data for ${service.networkName}")
+                        Future.successful(Left(ApiErrors.InternalServerError()))
                     }
-                  case _ =>
-                    log.error(s"login not found within $data for ${service.networkName}")
+                  case Failure(f) =>
+                    log.error(f.getMessage, f)
                     Future.successful(Left(ApiErrors.InternalServerError()))
                 }
-              case Failure(f) =>
-                log.error(f.getMessage, f)
-                Future.successful(Left(ApiErrors.InternalServerError()))
+              case _ =>
+                Future.successful(Left(ApiErrors.BadRequest()))
             }
           )
       }
@@ -314,7 +319,7 @@ trait OAuthServiceEndpoints[SD <: SessionData with SessionDataDecorator[SD]]
       authorize,
       token,
       me
-    ) ++ services.map(signin) ++ services.map(backup)
+    ) ++ services.map(signin) ++ services.map(callback)
 
 }
 
