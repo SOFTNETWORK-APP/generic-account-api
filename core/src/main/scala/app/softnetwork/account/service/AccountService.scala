@@ -5,7 +5,6 @@ import akka.http.scaladsl.server.{AuthenticationFailedRejection, RejectionHandle
 import akka.http.scaladsl.unmarshalling.Unmarshaller
 import com.softwaremill.session.CsrfDirectives._
 import com.softwaremill.session.CsrfOptions._
-import com.typesafe.scalalogging.StrictLogging
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import app.softnetwork.api.server._
 import app.softnetwork.persistence.typed.CommandTypeKey
@@ -32,7 +31,6 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
     extends AccountServiceDirectives[SD]
     with DefaultComplete
     with Json4sSupport
-    with StrictLogging
     with ApiRoute {
   _: CommandTypeKey[AccountCommand] with ManifestWrapper[AV] with SessionMaterials[SD] =>
 

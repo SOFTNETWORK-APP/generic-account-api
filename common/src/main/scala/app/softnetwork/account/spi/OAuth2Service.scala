@@ -9,11 +9,10 @@ import com.github.scribejava.core.builder.ServiceBuilder
 import com.github.scribejava.core.builder.api.DefaultApi20
 import com.github.scribejava.core.model.{OAuth2AccessToken, OAuthRequest, Response}
 import com.github.scribejava.core.oauth.{AccessTokenRequestParams, OAuth20Service}
-import com.typesafe.scalalogging.StrictLogging
 
 import scala.util.Try
 
-trait OAuth2Service extends StrictLogging {
+trait OAuth2Service {
   def networkName: String
 
   protected def provider: OAuthProvider = AccountSettings.OAuthSettings

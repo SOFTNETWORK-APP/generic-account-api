@@ -10,7 +10,6 @@ import app.softnetwork.persistence.typed.CommandTypeKey
 import app.softnetwork.session.service.SessionMaterials
 import com.softwaremill.session.CsrfDirectives._
 import com.softwaremill.session.CsrfOptions._
-import com.typesafe.scalalogging.StrictLogging
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import org.json4s.{jackson, Formats}
 import org.json4s.jackson.Serialization
@@ -27,7 +26,6 @@ trait OAuthService[SD <: SessionData with SessionDataDecorator[SD]]
     extends AccountServiceDirectives[SD]
     with DefaultComplete
     with Json4sSupport
-    with StrictLogging
     with ApiRoute { _: CommandTypeKey[AccountCommand] with SessionMaterials[SD] =>
 
   implicit def sessionConfig: SessionConfig
@@ -253,7 +251,7 @@ trait OAuthService[SD <: SessionData with SessionDataDecorator[SD]]
                       complete(HttpResponse(StatusCodes.InternalServerError))
                   }
                 case Failure(f) =>
-                  logger.error(f.getMessage, f)
+                  log.error(f.getMessage, f)
                   complete(HttpResponse(StatusCodes.InternalServerError))
               }
             case _ =>
