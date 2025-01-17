@@ -1,7 +1,8 @@
 package app.softnetwork.account.scalatest
 
-import akka.http.scaladsl.model.{FormData, HttpProtocols, StatusCodes}
+import akka.http.scaladsl.model.{FormData, HttpEntity, HttpProtocols, HttpResponse, StatusCodes}
 import akka.http.scaladsl.model.headers.{BasicHttpCredentials, OAuth2BearerToken}
+import akka.http.scaladsl.unmarshalling.Unmarshaller
 import app.softnetwork.account.config.AccountSettings
 import app.softnetwork.account.handlers.{AccountKeyDao, MockGenerator}
 import app.softnetwork.account.message._
@@ -245,9 +246,15 @@ trait AccountRouteSpec[
         OAuth2BearerToken(accessToken)
       ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
-        val me = responseAs[Me]
-        me.firstName shouldBe firstName
-        me.lastName shouldBe lastName
+        implicit val responseBodyUnmarshaller: Unmarshaller[HttpResponse, String] =
+          Unmarshaller
+            .strict[HttpResponse, HttpEntity](_.entity)
+            .andThen(Unmarshaller.stringUnmarshaller)
+        val str = responseAs[String]
+        log.info(str)
+        val me = serialization.read[Me](str)
+        assert(me.firstName == firstName)
+        assert(me.lastName == lastName)
       }
     }
     "signin using OAuth2" in {
