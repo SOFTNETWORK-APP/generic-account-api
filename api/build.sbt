@@ -27,5 +27,5 @@ organization := "app.softnetwork.account"
 name := "account-api"
 
 libraryDependencies ++= Seq(
-  "app.softnetwork.persistence" %% "persistence-jdbc" % Versions.genericPersistence
+  "app.softnetwork.notification" %% "notification-api" % Versions.notification
 )
