@@ -12,7 +12,7 @@ import org.slf4j.{Logger, LoggerFactory}
 import org.softnetwork.session.model.Session
 
 object BasicAccountRoutesWithNotificationsPostgresLauncher
-    extends AllNotificationsApi
+    extends AllNotificationsApi[Session]
     with BasicAccountRoutesApi[Session]
     with SessionApi
     with JdbcSchemaProvider
