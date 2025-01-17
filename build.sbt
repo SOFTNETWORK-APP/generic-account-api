@@ -2,7 +2,7 @@ ThisBuild / organization := "app.softnetwork"
 
 name := "account"
 
-ThisBuild / version := "0.6.3.3"
+ThisBuild / version := "0.6.4-SNAPSHOT"
 
 ThisBuild / scalaVersion := "2.12.18"
 
@@ -12,6 +12,7 @@ ThisBuild / javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint")
 
 ThisBuild / resolvers ++= Seq(
   "Softnetwork Server" at "https://softnetwork.jfrog.io/artifactory/releases/",
+  "Softnetwork Snapshots" at "https://softnetwork.jfrog.io/artifactory/snapshots/",
   "Maven Central Server" at "https://repo1.maven.org/maven2",
   "Typesafe Server" at "https://repo.typesafe.com/typesafe/releases"
 )
