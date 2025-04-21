@@ -1,10 +1,10 @@
 object Versions {
 
-  val genericPersistence = "0.6.2.1"
+  val genericPersistence = "0.7-SNAPSHOT"
 
   val notification = "0.8.0-SNAPSHOT"
 
-  val scheduler = "0.6.3"
+  val scheduler = "0.7-SNAPSHOT"
 
   val scalatest = "3.2.16"
 
