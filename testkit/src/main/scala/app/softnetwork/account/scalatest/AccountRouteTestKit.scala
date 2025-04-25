@@ -24,11 +24,13 @@ trait AccountRouteTestKit[
 
   override implicit lazy val ts: ActorSystem[_] = typedSystem()
 
+/*
   override def beforeAll(): Unit = {
     super.beforeAll()
     // pre load routes
     apiRoutes(typedSystem())
   }
+*/
 
   def signUp(
     login: String,
