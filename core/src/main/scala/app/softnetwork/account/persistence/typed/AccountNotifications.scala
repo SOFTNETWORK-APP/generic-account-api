@@ -32,7 +32,7 @@ trait AccountNotifications[T <: Account] extends Completion {
     s"$entityId-registration"
   }
 
-  private[this] def addMail(
+  protected def addMail(
     uuid: String,
     account: T,
     subject: String,
@@ -63,7 +63,7 @@ trait AccountNotifications[T <: Account] extends Completion {
     }
   }
 
-  private[this] def addSMS(
+  protected def addSMS(
     uuid: String,
     account: T,
     subject: String,
@@ -93,7 +93,7 @@ trait AccountNotifications[T <: Account] extends Completion {
     }
   }
 
-  private[this] def addPush(
+  protected def addPush(
     uuid: String,
     account: T,
     subject: String,
