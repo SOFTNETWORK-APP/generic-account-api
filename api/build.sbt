@@ -2,7 +2,7 @@ import com.typesafe.sbt.packager.docker._
 
 Compile / mainClass := Some("app.softnetwork.persistence.auth.api.BasicAccountEndpointsPostgresLauncher")
 
-dockerBaseImage := "openjdk:8"
+dockerBaseImage := "eclipse-temurin:17-jdk"
 
 dockerEntrypoint := Seq(s"${(Docker / defaultLinuxInstallLocation).value}/bin/entrypoint.sh")
 

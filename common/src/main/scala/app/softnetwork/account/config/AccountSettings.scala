@@ -4,7 +4,7 @@ package app.softnetwork.account.config
   */
 import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.StrictLogging
-import configs.Configs
+import configs.ConfigReader
 import Password._
 
 object AccountSettings extends StrictLogging {
@@ -49,7 +49,7 @@ object AccountSettings extends StrictLogging {
   val MaxLoginFailures: Int = config.getInt("auth.maxLoginFailures")
 
   def passwordRules(config: Config = config): PasswordRules =
-    Configs[PasswordRules].get(config, "auth.password").toEither match {
+    ConfigReader[PasswordRules].read(config, "auth.password").toEither match {
       case Left(configError) =>
         logger.error(s"Something went wrong with the provided arguments $configError")
         PasswordRules()
@@ -57,15 +57,15 @@ object AccountSettings extends StrictLogging {
     }
 
   lazy val NotificationsConfig: Notifications.Config =
-    Configs[Notifications.Config].get(config, "auth.notifications").toEither match {
+    ConfigReader[Notifications.Config].read(config, "auth.notifications").toEither match {
       case Left(configError) =>
         logger.error(s"Something went wrong with the provided arguments $configError")
         throw configError.configException
       case Right(notificationsConfig) => notificationsConfig
     }
 
-  lazy val AdministratorsConfig: Administrators.Config = Configs[Administrators.Config]
-    .get(
+  lazy val AdministratorsConfig: Administrators.Config = ConfigReader[Administrators.Config]
+    .read(
       config,
       "auth.admin"
     )
@@ -83,7 +83,7 @@ object AccountSettings extends StrictLogging {
   val AnonymousPassword: String = config.getString("auth.anonymous.password")
 
   lazy val OAuthSettings: OAuthConfig =
-    Configs[OAuthConfig].get(config, "auth.oauth").toEither match {
+    ConfigReader[OAuthConfig].read(config, "auth.oauth").toEither match {
       case Left(configError) =>
         logger.error(s"Something went wrong with the provided arguments $configError")
         throw configError.configException
