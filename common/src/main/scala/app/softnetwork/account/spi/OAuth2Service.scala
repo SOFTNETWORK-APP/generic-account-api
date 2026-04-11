@@ -47,7 +47,7 @@ trait OAuth2Service {
     service.signRequest(accessToken, request)
 
   def getAccessToken(code: String, extraParameters: Map[String, String]): OAuth2AccessToken = {
-    import scala.collection.JavaConverters._
+    import scala.jdk.CollectionConverters._
     service.getAccessToken(
       AccessTokenRequestParams.create(code).setExtraParameters(extraParameters.asJava)
     )
@@ -72,6 +72,7 @@ trait OAuth2Service {
     jsonMapper
       .readValue(execute(request).getBody, classOf[Map[String, Any]])
       .mapValues(_.toString)
+      .toMap
   }
 
   def extractData(data: Map[String, String]): OAuthData = OAuthData(networkName, data)

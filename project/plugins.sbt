@@ -7,11 +7,11 @@ resolvers ++= Seq(
   "Softnetwork releases" at "https://softnetwork.jfrog.io/artifactory/releases/"
 )
 
-addSbtPlugin("app.softnetwork.sbt-softnetwork" % "sbt-softnetwork-git" % "0.1.7")
+addSbtPlugin("app.softnetwork.sbt-softnetwork" % "sbt-softnetwork-git" % "0.2.0")
 
-addSbtPlugin("app.softnetwork.sbt-softnetwork" % "sbt-softnetwork-info" % "0.1.7")
+addSbtPlugin("app.softnetwork.sbt-softnetwork" % "sbt-softnetwork-info" % "0.2.0")
 
-addSbtPlugin("app.softnetwork.sbt-softnetwork" % "sbt-softnetwork-publish" % "0.1.7")
+addSbtPlugin("app.softnetwork.sbt-softnetwork" % "sbt-softnetwork-publish" % "0.2.0")
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.3.10")
 
@@ -21,4 +21,4 @@ addDependencyTreePlugin
 
 //addSbtPlugin("com.typesafe.sbt" % "sbt-multi-jvm" % "0.4.0")
 
-addSbtPlugin("org.scoverage" % "sbt-scoverage" % "2.0.8")
+addSbtPlugin("org.scoverage" % "sbt-scoverage" % "2.3.0")

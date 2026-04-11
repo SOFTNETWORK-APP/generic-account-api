@@ -98,7 +98,7 @@ trait AccountServiceEndpoints[SU, SD <: SessionData with SessionDataDecorator[SD
                     case _                                                         => generateUUID()
                   }
 
-                run(uuid, SignUpAnonymous) complete () match {
+                run(uuid, SignUpAnonymous).complete() match {
 
                   case Success(value) =>
                     value match {
@@ -164,7 +164,7 @@ trait AccountServiceEndpoints[SU, SD <: SessionData with SessionDataDecorator[SD
                 run(
                   uuid,
                   signUp
-                ) complete () match {
+                ).complete() match {
                   case Success(value) =>
                     value match {
 
@@ -295,7 +295,7 @@ trait AccountServiceEndpoints[SU, SD <: SessionData with SessionDataDecorator[SD
                           None
                       )
                     )
-                ) complete () match {
+                ).complete() match {
 
                   case Success(value) =>
                     value match {

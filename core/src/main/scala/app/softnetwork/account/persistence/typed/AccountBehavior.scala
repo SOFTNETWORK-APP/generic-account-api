@@ -1379,5 +1379,5 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
   }
 
   private[this] def lookupAccount(key: String)(implicit system: ActorSystem[_]): Option[String] =
-    accountKeyDao.lookupAccount(key) complete ()
+    accountKeyDao.lookupAccount(key).complete()
 }

@@ -2,13 +2,29 @@ package app.softnetwork.account.config
 
 import java.util.regex.Matcher
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
+import configs.ConfigReader
 import org.passay._
 
 /** Created by smanciot on 11/04/2018.
   */
 object Password {
+
+  implicit val upperCaseCharacterReader: ConfigReader[UpperCaseCharacter] =
+    ConfigReader.fromTry(_.getConfig(_).getInt("size")).map(new UpperCaseCharacter(_))
+
+  implicit val lowerCaseCharacterReader: ConfigReader[LowerCaseCharacter] =
+    ConfigReader.fromTry(_.getConfig(_).getInt("size")).map(new LowerCaseCharacter(_))
+
+  implicit val numberCharacterReader: ConfigReader[NumberCharacter] =
+    ConfigReader.fromTry(_.getConfig(_).getInt("size")).map(new NumberCharacter(_))
+
+  implicit val specialCharacterReader: ConfigReader[SpecialCharacter] =
+    ConfigReader.fromTry(_.getConfig(_).getInt("size")).map(new SpecialCharacter(_))
+
+  implicit val whitespaceReader: ConfigReader[Whitespace] =
+    ConfigReader.fromTry((c, p) => { c.getConfig(p); Whitespace() })
 
   sealed trait PasswordRule {
     def rule: Rule
@@ -47,7 +63,7 @@ object Password {
       if (result.isValid)
         Right(true)
       else
-        Left(result.getDetails.asScala.map(_.getErrorCode))
+        Left(result.getDetails.asScala.map(_.getErrorCode).toSeq)
     }
 
     def generatePassword(size: Int): String = {
