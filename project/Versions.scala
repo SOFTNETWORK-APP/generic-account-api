@@ -1,6 +1,6 @@
 object Versions {
 
-  val genericPersistence = "0.8.1"
+  val genericPersistence = "0.8.2"
 
   val notification = "0.9.0"
 
