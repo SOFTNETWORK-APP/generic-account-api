@@ -285,12 +285,14 @@ trait AccountRouteSpec[
     }
     "work with matching email and password" in {
       implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
-      AccountKeyDao.lookupAccount(email)(typedSystem()) await {
+      AccountKeyDao.lookupAccount(email) await {
         case Some(uuid) =>
           Get(
             s"/$RootPath/${AccountSettings.Path}/activate",
             Activate(MockGenerator.computeToken(uuid))
-          ) ~> routes
+          ) ~> routes ~> check {
+            status shouldEqual StatusCodes.OK
+          }
           Post(
             s"/$RootPath/${AccountSettings.Path}/login",
             Login(email, password)
