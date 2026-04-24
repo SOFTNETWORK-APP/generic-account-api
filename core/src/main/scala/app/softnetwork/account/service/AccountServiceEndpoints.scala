@@ -342,25 +342,22 @@ trait AccountServiceEndpoints[SU, SD <: SessionData with SessionDataDecorator[SD
     loginEndpoint.in("signIn").serverLogicSuccess(_ => _ => Future.successful(()))
 
   val activate: ServerEndpoint[Any with AkkaStreams, Future] =
-    setNewCsrfToken(checkMode) {
-      setSession(sc, st) {
-        endpoint
-          .securityIn(path[String](name = "token"))
-          .errorOut(ApiErrors.oneOfApiErrors)
-          .serverSecurityLogicWithOutput(token =>
-            run(token, Activate(token)).map {
-              case r: AccountActivated =>
-                val account = r.account
-                // create a new session
-                Right((), Some(companion.newSession.withId(account.uuid)))
-              case other => Left(resultToApiError(other))
-            }
-          )
-      }
-    }
+    ApiErrors
+      .withApiErrorVariants(
+        setNewCsrfToken(checkMode) {
+          endpoint.serverSecurityLogicSuccessWithOutput(_ => Future.successful(((), ())))
+        }
+      )
       .in(AccountSettings.Path / "activate")
+      .in(path[String](name = "token"))
       .get
-      .serverLogicSuccess(_ => _ => Future.successful(()))
+      .serverLogic(_ =>
+        token =>
+          run(token, Activate(token)).map {
+            case _: AccountActivated => Right(())
+            case other               => Left(resultToApiError(other))
+          }
+      )
 
   def logoutEndpoint(suffix: String): ServerEndpoint[Any with AkkaStreams, Future] =
     ApiErrors

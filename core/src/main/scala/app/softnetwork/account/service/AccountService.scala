@@ -144,19 +144,14 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
   }
 
   lazy val activate: Route = pathPrefix("activate") {
-    implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
     pathSuffix(Segment) { token =>
       get {
         // execute activate
         run(token, Activate(token)) completeWith {
-          case r: AccountActivated =>
-            val account = r.account
-            // create a new session
-            setSession(sc, st, companion.newSession.withId(account.uuid)) {
-              // create a new anti csrf token
-              setNewCsrfToken(checkHeader) {
-                complete(HttpResponse(StatusCodes.OK, entity = account.view.asInstanceOf[AV]))
-              }
+          case _: AccountActivated =>
+            // create a new anti csrf token
+            setNewCsrfToken(checkHeader) {
+              complete(HttpResponse(StatusCodes.OK))
             }
           case error: AccountErrorMessage =>
             complete(HttpResponse(StatusCodes.BadRequest, entity = error))
