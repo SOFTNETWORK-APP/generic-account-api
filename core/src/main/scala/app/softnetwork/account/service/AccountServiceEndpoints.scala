@@ -345,10 +345,10 @@ trait AccountServiceEndpoints[SU, SD <: SessionData with SessionDataDecorator[SD
     setNewCsrfToken(checkMode) {
       setSession(sc, st) {
         endpoint
-          .securityIn(jsonBody[Activate])
+          .securityIn(path[String](name = "token"))
           .errorOut(ApiErrors.oneOfApiErrors)
-          .serverSecurityLogicWithOutput(activate =>
-            run(activate.token, activate).map {
+          .serverSecurityLogicWithOutput(token =>
+            run(token, Activate(token)).map {
               case r: AccountActivated =>
                 val account = r.account
                 // create a new session

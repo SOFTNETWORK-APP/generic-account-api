@@ -288,8 +288,7 @@ trait AccountRouteSpec[
       AccountKeyDao.lookupAccount(email) await {
         case Some(uuid) =>
           Get(
-            s"/$RootPath/${AccountSettings.Path}/activate",
-            Activate(MockGenerator.computeToken(uuid))
+            s"/$RootPath/${AccountSettings.Path}/activate/${MockGenerator.computeToken(uuid)}"
           ) ~> routes ~> check {
             status shouldEqual StatusCodes.OK
           }

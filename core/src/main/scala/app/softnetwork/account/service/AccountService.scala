@@ -143,12 +143,12 @@ trait AccountService[PV <: ProfileView, DV <: AccountDetailsView, AV <: AccountV
     }
   }
 
-  lazy val activate: Route = path("activate") {
+  lazy val activate: Route = pathPrefix("activate") {
     implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
-    get {
-      entity(as[Activate]) { activate =>
+    pathSuffix(Segment) { token =>
+      get {
         // execute activate
-        run(activate.token, activate) completeWith {
+        run(token, Activate(token)) completeWith {
           case r: AccountActivated =>
             val account = r.account
             // create a new session
