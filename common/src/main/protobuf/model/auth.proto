@@ -91,6 +91,7 @@ message BasicAccountProfile {
     option (scalapb.message).extends = "Profile";
     option (scalapb.message).extends = "AccountDetails";
     option (scalapb.message).extends = "Timestamped";
+    option (scalapb.message).companion_extends = "BasicAccountProfileCompanion";
     required string uuid = 1;
     required google.protobuf.Timestamp createdDate = 2 [(scalapb.field).type = "java.time.Instant"];
     required google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.time.Instant"];

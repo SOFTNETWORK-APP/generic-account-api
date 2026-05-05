@@ -68,6 +68,27 @@ trait AccountServiceSpec[
       }
     }
 
+    "preserve profile firstName and lastName" in {
+      val profileFirstName = "First"
+      val profileLastName = "Last"
+      val profileName = "testProfile"
+      val profile =
+        BasicAccountProfile(profileName, ProfileType.CUSTOMER, profileFirstName, profileLastName)
+      val signUpEmail = computeEmail("withprofile")
+      val uuid = generateUUID(Some(signUpEmail))
+      run(uuid, BasicAccountSignUp(signUpEmail, pwd, profile = Some(profile))) await {
+        case r: AccountCreated =>
+          val account = r.account
+          account.currentProfile shouldBe defined
+          val p = account.currentProfile.get
+          p.firstName shouldBe profileFirstName
+          p.lastName shouldBe profileLastName
+          p.name shouldBe profileName
+          p.`type` shouldBe ProfileType.CUSTOMER
+        case other => fail(other.toString)
+      }
+    }
+
     "fail if username already exists" in {
       run(usernameUuid, BasicAccountSignUp(username, pwd)) await {
         case AccountAlreadyExists => succeed

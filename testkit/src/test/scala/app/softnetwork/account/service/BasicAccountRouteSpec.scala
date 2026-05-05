@@ -55,11 +55,7 @@ trait BasicAccountRouteSpec
 
   lazy val log: Logger = LoggerFactory getLogger getClass.getName
   override val profile: BasicAccountProfile =
-    BasicAccountProfile.defaultInstance
-      .withName("name")
-      .withType(ProfileType.CUSTOMER)
-      .withFirstName(firstName)
-      .withLastName(lastName)
+    BasicAccountProfile("name", ProfileType.CUSTOMER, firstName, lastName)
 
 }
 

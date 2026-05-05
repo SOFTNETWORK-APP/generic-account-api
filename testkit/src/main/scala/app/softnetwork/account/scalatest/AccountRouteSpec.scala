@@ -110,14 +110,18 @@ trait AccountRouteSpec[
         responseAs[AccountErrorMessage].message shouldBe PasswordsNotMatched.message
       }
     }
-    "work with username" in {
+    "work with username and preserve profile firstName and lastName" in {
       implicit val manifest: Manifest[AV] = manifestWrapper.wrapped
       Post(
         s"/$RootPath/${AccountSettings.Path}/signUp",
         implicitly[SignUp]((username, password, Some(profile)))
       ) ~> routes ~> check {
         status shouldEqual StatusCodes.Created
-        responseAs[AV].status shouldBe AccountStatus.Active
+        val account = responseAs[AV]
+        account.status shouldBe AccountStatus.Active
+        account.currentProfile shouldBe defined
+        account.currentProfile.get.firstName shouldBe firstName
+        account.currentProfile.get.lastName shouldBe lastName
       }
     }
     "fail if username already exists" in {
