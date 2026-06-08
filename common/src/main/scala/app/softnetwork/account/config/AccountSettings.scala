@@ -21,6 +21,11 @@ object AccountSettings extends StrictLogging {
 
   val ResetPasswordUrl: String = config.getString("auth.resetPasswordUrl")
 
+  /** Activation link template emitted in the activation email. Contains a `{token}` placeholder
+    * replaced with the activation token. Defaults to `${baseUrl}/${path}/activate/{token}`.
+    */
+  val ActivationUrl: String = config.getString("auth.activationUrl")
+
   val RegenerationOfThePasswordResetToken: Boolean =
     config.getBoolean("auth.regenerationOfThePasswordResetToken")
 
