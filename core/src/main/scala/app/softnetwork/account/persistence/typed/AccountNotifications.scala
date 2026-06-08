@@ -208,7 +208,7 @@ trait AccountNotifications[T <: Account] extends Completion {
           case Some(s) => StringEscapeUtils.escapeHtml4(s.firstName)
           case _       => "customer"
         }),
-        "activationUrl" -> s"$BaseUrl/$Path/activate/${activationToken.token}",
+        "activationUrl" -> ActivationUrl.replace("{token}", activationToken.token),
         "signature"     -> NotificationsConfig.signature
       )
     )
