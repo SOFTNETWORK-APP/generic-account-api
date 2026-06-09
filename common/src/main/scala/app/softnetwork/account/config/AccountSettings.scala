@@ -39,6 +39,11 @@ object AccountSettings extends StrictLogging {
 
   val OAuthPath: String = config.getString("auth.oauth.path")
 
+  /** Frontend URL the OAuth callback redirects the browser to once the session has been established
+    * (a `status=success|error` query param is appended).
+    */
+  val OAuthCallbackRedirectUrl: String = config.getString("auth.oauth.callback.redirect-url")
+
   val VerificationCodeSize: Int = config.getInt("auth.verification.code.size")
 
   val VerificationCodeExpirationTime: Int = config.getInt("auth.verification.code.expirationTime")

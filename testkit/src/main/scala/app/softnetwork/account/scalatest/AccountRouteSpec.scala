@@ -272,7 +272,7 @@ trait AccountRouteSpec[
       Get(
         s"/$RootPath/${AccountSettings.OAuthPath}/dummy/callback?code=1234"
       ) ~> routes ~> check {
-        status shouldEqual StatusCodes.OK
+        status shouldEqual StatusCodes.Found
       }
     }
   }

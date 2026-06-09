@@ -17,6 +17,7 @@ import sttp.capabilities
 import sttp.capabilities.akka.AkkaStreams
 import sttp.model.headers.AuthenticationScheme.{Basic, Bearer}
 import sttp.model.headers.WWWAuthenticateChallenge
+import sttp.model.{HeaderNames, StatusCode}
 import sttp.tapir.EndpointIO.Example
 import sttp.tapir.json.json4s.jsonBody
 import sttp.tapir.model.UsernamePassword
@@ -267,6 +268,10 @@ trait OAuthServiceEndpoints[SD <: SessionData with SessionDataDecorator[SD]]
           .description(s"OAuth2 ${service.networkName} callback endpoint")
           .securityIn(queryParams.description("authorization query parameters"))
           .errorOut(ApiErrors.oneOfApiErrors)
+          // On completion the session cookie is set (when present) and the browser
+          // is 302-redirected to the configured frontend URL.
+          .out(statusCode(StatusCode.Found))
+          .out(header[String](HeaderNames.Location))
           .serverSecurityLogicWithOutput(params =>
             params.get("code") match {
               case Some(code) =>
@@ -281,7 +286,7 @@ trait OAuthServiceEndpoints[SD <: SessionData with SessionDataDecorator[SD]]
                             session += ("provider", data.provider)
                             session ++= data.data.toSeq
                             Future.successful(
-                              Right((), Some(session))
+                              Right((callbackRedirect("success"), Some(session)))
                             )
                           case _ =>
                             run(generateUUID(), SignUpOAuth(data)) map {
@@ -290,20 +295,28 @@ trait OAuthServiceEndpoints[SD <: SessionData with SessionDataDecorator[SD]]
                                 var session =
                                   companion.newSession.withId(r.account.uuid).withAnonymous(false)
                                 session += ("provider", data.provider)
-                                Right((), Some(session))
-                              case other => Left(resultToApiError(other))
+                                Right((callbackRedirect("success"), Some(session)))
+                              case other =>
+                                log.error(s"sign up failed for ${service.networkName}: $other")
+                                Right((callbackRedirect("error", Some("signup_failed")), None))
                             }
                         }
                       case _ =>
                         log.error(s"login not found within $data for ${service.networkName}")
-                        Future.successful(Left(ApiErrors.InternalServerError()))
+                        Future.successful(
+                          Right((callbackRedirect("error", Some("login_not_found")), None))
+                        )
                     }
                   case Failure(f) =>
                     log.error(f.getMessage, f)
-                    Future.successful(Left(ApiErrors.InternalServerError()))
+                    Future.successful(
+                      Right((callbackRedirect("error", Some("user_info_failed")), None))
+                    )
                 }
               case _ =>
-                Future.successful(Left(ApiErrors.BadRequest()))
+                Future.successful(
+                  Right((callbackRedirect("error", Some("missing_code")), None))
+                )
             }
           )
       }

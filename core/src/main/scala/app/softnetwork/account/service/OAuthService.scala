@@ -214,11 +214,7 @@ trait OAuthService[SD <: SessionData with SessionDataDecorator[SD]]
                           setSession(sc, st, session) {
                             // create a new anti csrf token
                             setNewCsrfToken(checkHeader) {
-                              complete(
-                                HttpResponse(
-                                  StatusCodes.OK
-                                )
-                              )
+                              redirect(callbackRedirect("success"), StatusCodes.Found)
                             }
                           }
                         case _ =>
@@ -232,30 +228,35 @@ trait OAuthService[SD <: SessionData with SessionDataDecorator[SD]]
                               setSession(sc, st, session) {
                                 // create a new anti csrf token
                                 setNewCsrfToken(checkHeader) {
-                                  complete(
-                                    HttpResponse(
-                                      StatusCodes.OK
-                                    )
-                                  )
+                                  redirect(callbackRedirect("success"), StatusCodes.Found)
                                 }
                               }
                             case error: AccountErrorMessage =>
-                              complete(
-                                HttpResponse(StatusCodes.BadRequest, entity = error)
+                              log.error(s"sign up failed for ${service.networkName}: $error")
+                              redirect(
+                                callbackRedirect("error", Some("signup_failed")),
+                                StatusCodes.Found
                               )
-                            case _ => complete(StatusCodes.BadRequest)
+                            case _ =>
+                              redirect(
+                                callbackRedirect("error", Some("signup_failed")),
+                                StatusCodes.Found
+                              )
                           }
                       }
                     case _ =>
                       log.error(s"login not found within $data for ${service.networkName}")
-                      complete(HttpResponse(StatusCodes.InternalServerError))
+                      redirect(
+                        callbackRedirect("error", Some("login_not_found")),
+                        StatusCodes.Found
+                      )
                   }
                 case Failure(f) =>
                   log.error(f.getMessage, f)
-                  complete(HttpResponse(StatusCodes.InternalServerError))
+                  redirect(callbackRedirect("error", Some("user_info_failed")), StatusCodes.Found)
               }
             case _ =>
-              complete(HttpResponse(StatusCodes.BadRequest))
+              redirect(callbackRedirect("error", Some("missing_code")), StatusCodes.Found)
           }
         }
       }
