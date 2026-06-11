@@ -282,9 +282,17 @@ trait OAuthServiceEndpoints[SD <: SessionData with SessionDataDecorator[SD]]
                       case Some(login) =>
                         lookup(login) flatMap {
                           case Some(uuid) =>
+                            // Store ONLY identity (id + provider) in the session, never the full
+                            // OAuth profile. `session ++= data.data.toSeq` merged every provider
+                            // field (GitHub /user returns ~30, mostly long *_url values); once the
+                            // session is encrypted (encrypt-data=true → AES) and hex-encoded into
+                            // the JWT `_sessiondata` cookie, the value exceeded the browser's
+                            // 4096-char per-cookie cap → the browser silently dropped the Set-Cookie
+                            // → no session → OAuth sign-in bounced back to /signin. The profile is
+                            // persisted on the account and read via /api/account/profile. (Matches
+                            // the new-account branch below, which already stores identity only.)
                             var session = companion.newSession.withId(uuid).withAnonymous(false)
                             session += ("provider", data.provider)
-                            session ++= data.data.toSeq
                             Future.successful(
                               Right((callbackRedirect("success"), Some(session)))
                             )

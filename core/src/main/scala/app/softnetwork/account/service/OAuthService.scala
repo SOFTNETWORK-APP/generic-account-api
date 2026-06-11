@@ -220,11 +220,18 @@ trait OAuthService[SD <: SessionData with SessionDataDecorator[SD]]
                         case _ =>
                           run(generateUUID(), SignUpOAuth(data)) completeWith {
                             case r: AccountCreated =>
-                              // create a new session
+                              // create a new session — mirror the existing-account branch above:
+                              // store ONLY identity (id + provider), never the full OAuth profile.
+                              // `session ++= data.data.toSeq` injected every provider field (GitHub
+                              // /user returns ~30, mostly long *_url values); once the session is
+                              // encrypted (encrypt-data=true → AES) and hex-encoded into the JWT
+                              // `_sessiondata` cookie, the payload blew past the browser's 4096-char
+                              // per-cookie limit → the browser silently dropped the Set-Cookie →
+                              // no session → OAuth sign-in bounced back to /signin. The profile is
+                              // already persisted by SignUpOAuth and read via /api/account/profile.
                               var session =
                                 companion.newSession.withId(r.account.uuid).withAnonymous(false)
                               session += ("provider", data.provider)
-                              session ++= data.data.toSeq
                               setSession(sc, st, session) {
                                 // create a new anti csrf token
                                 setNewCsrfToken(checkHeader) {
