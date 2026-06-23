@@ -1,10 +1,10 @@
 object Versions {
 
-  val genericPersistence = "0.9-SNAPSHOT"
+  val genericPersistence = "0.9.0"
 
-  val notification = "0.9-SNAPSHOT"
+  val notification = "0.9.3"
 
-  val scheduler = "0.8-SNAPSHOT"
+  val scheduler = "0.8.1"
 
   val slf4j = "2.0.7"
 
