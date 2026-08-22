@@ -248,6 +248,10 @@ trait AccountServiceEndpoints[SU, SD <: SessionData with SessionDataDecorator[SD
                     session += (session.profileKey, profile.name)
                   case _ =>
                 }
+                account.email match {
+                  case Some(email) => session += (AccountSettings.SessionEmailKey, email)
+                  case _           =>
+                }
                 Right((account.view.asInstanceOf[AV], Some(session)))
               case other => Left(resultToApiError(other))
             }
@@ -312,6 +316,10 @@ trait AccountServiceEndpoints[SU, SD <: SessionData with SessionDataDecorator[SD
                           case Some(profile) =>
                             session += (session.profileKey, profile.name)
                           case _ =>
+                        }
+                        account.email match {
+                          case Some(email) => session += (AccountSettings.SessionEmailKey, email)
+                          case _           =>
                         }
                         Right(
                           (

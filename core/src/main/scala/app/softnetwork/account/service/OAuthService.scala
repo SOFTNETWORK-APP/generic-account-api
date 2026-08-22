@@ -165,6 +165,10 @@ trait OAuthService[SD <: SessionData with SessionDataDecorator[SD]]
               session += (session.profileKey, profile.name)
             case _ =>
           }
+          account.email match {
+            case Some(email) => session += (AccountSettings.SessionEmailKey, email)
+            case _           =>
+          }
           setSession(sc, st, session) {
             // create a new anti csrf token
             setNewCsrfToken(checkHeader) {
