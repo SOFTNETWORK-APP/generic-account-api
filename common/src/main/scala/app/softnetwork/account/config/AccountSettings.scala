@@ -15,6 +15,20 @@ object AccountSettings extends StrictLogging {
 
   val Realm: String = config.getString("auth.realm")
 
+  /** Session key holding the account's e-mail, stamped at sign-in by every authentication path.
+    *
+    * Downstream services derive trust decisions from the e-mail DOMAIN — the licence server keys
+    * its one-evaluation-per-organisation rule and its free-mail gate on it. Their only other source
+    * is an organisation contact address the requester can edit, i.e. forge. Putting the address
+    * here places it behind the session's HMAC, which is the same trust the `admin` flag already
+    * relies on for authorization.
+    *
+    * Not a config value: it is a wire contract with those readers, so it must not be re-mappable
+    * per deployment. Absent for an account registered by phone (`Account.email` is an `Option`) —
+    * readers must handle that rather than assume presence.
+    */
+  val SessionEmailKey: String = "email"
+
   val Path: String = config.getString("auth.path")
 
   val BaseUrl: String = config.getString("auth.baseUrl")

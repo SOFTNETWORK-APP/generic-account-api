@@ -313,6 +313,24 @@ trait AccountRouteSpec[
         responseAs[AV].status shouldBe AccountStatus.Active
       }
     }
+    // Downstream services key trust decisions on the DOMAIN of this address — the licence server
+    // decides one-evaluation-per-organisation and its free-mail gate on it. Their only other source
+    // is an organisation contact the requester can edit, i.e. forge, so the stamp is a contract
+    // rather than a convenience. It is asserted at the SESSION because an authentication path that
+    // forgets it degrades silently: the reader just falls back.
+    // (The e-mail account is activated by "work with matching email and password" above.)
+    "stamp the account e-mail into the session" in {
+      // No trailing signOut(): `signIn` opens with one, and calling it twice leaves stale
+      // headers that make the NEXT sign-in 403.
+      signIn(email, password)
+      extractSession().flatMap(_.get(AccountSettings.SessionEmailKey)) shouldBe Some(email)
+    }
+    // `Account.email` is an Option — an account registered by phone has none. The key must then be
+    // ABSENT rather than empty, so a reader can tell "no address" from "an address we lost".
+    "leave the e-mail absent for an account that has none" in {
+      signIn(gsm, password)
+      extractSession().flatMap(_.get(AccountSettings.SessionEmailKey)) shouldBe None
+    }
     "fail with unknown username" in {
       Post(
         s"/$RootPath/${AccountSettings.Path}/login",
